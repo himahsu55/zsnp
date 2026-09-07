@@ -34,6 +34,55 @@
       }
     }
 
+    /**
+     * Loads a direct presentation slide image or photo into page 1
+     */
+    async loadImageDocument(imgElement) {
+      try {
+        this.renderedPages.clear();
+        this.currentPdfDoc = null;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = imgElement.naturalWidth || imgElement.width || 1200;
+        canvas.height = imgElement.naturalHeight || imgElement.height || 800;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
+
+        const pageData = {
+          pageNum: 1,
+          canvas,
+          viewport: { width: canvas.width, height: canvas.height },
+          textItems: []
+        };
+
+        this.renderedPages.set(1, pageData);
+        return true;
+      } catch (err) {
+        console.error('PdfCropper failed to load image document:', err);
+        return false;
+      }
+    }
+
+    getAllCanvases() {
+      const canvases = [];
+      for (const [pageNum, pageData] of this.renderedPages.entries()) {
+        if (pageData && pageData.canvas) {
+          canvases.push(pageData.canvas);
+        }
+      }
+      return canvases;
+    }
+
+    getPageCount() {
+      if (this.currentPdfDoc) return this.currentPdfDoc.numPages;
+      return this.renderedPages.size || 0;
+    }
+
+    getPageCanvas(pageNum = 1) {
+      const p = this.renderedPages.get(pageNum);
+      return p ? p.canvas : null;
+    }
+
     async renderPage(pageNum) {
       if (this.renderedPages.has(pageNum)) return this.renderedPages.get(pageNum);
       if (!this.currentPdfDoc) return null;
@@ -250,6 +299,61 @@
         ctx.font = 'italic 11px sans-serif';
         ctx.fillText(`* ${product.remarks.slice(0, 45)}`, 24, 305);
       }
+
+      return c.toDataURL('image/png');
+    }
+
+    generateNotFoundSnippet(scannedCode, rawCode = '', docName = 'Cheatsheet') {
+      const c = document.createElement('canvas');
+      c.width = 400;
+      c.height = 240;
+      const ctx = c.getContext('2d');
+
+      // Warning Card Background
+      ctx.fillStyle = '#141010';
+      ctx.fillRect(0, 0, c.width, c.height);
+
+      // Warning Border
+      ctx.strokeStyle = '#FF473A';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(2, 2, c.width - 4, c.height - 4);
+
+      // Top Tag
+      ctx.fillStyle = '#FF473A';
+      ctx.fillRect(10, 10, 180, 24);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText('NO PLANOGRAM MATCH', 18, 26);
+
+      // Main Icon & Status
+      ctx.fillStyle = '#FFB5AF';
+      ctx.font = 'bold 15px monospace';
+      ctx.fillText(`CODE: ${scannedCode}`, 20, 68);
+
+      if (rawCode && rawCode !== scannedCode) {
+        ctx.fillStyle = '#8C93A0';
+        ctx.font = '12px monospace';
+        ctx.fillText(`RAW SCANNED: ${rawCode}`, 20, 92);
+      }
+
+      ctx.fillStyle = '#A0AEC0';
+      ctx.font = '12px sans-serif';
+      ctx.fillText(`Active Doc: ${docName.slice(0, 36)}`, 20, 120);
+
+      // Diagnostic Box
+      ctx.fillStyle = 'rgba(255, 71, 58, 0.12)';
+      ctx.fillRect(20, 140, c.width - 40, 75);
+      ctx.strokeStyle = 'rgba(255, 71, 58, 0.3)';
+      ctx.strokeRect(20, 140, c.width - 40, 75);
+
+      ctx.fillStyle = '#FFB5AF';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText('RECOMMENDED ACTION:', 30, 160);
+
+      ctx.fillStyle = '#E2E8F0';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('1. Check Digit Trim dial if barcode has size/check digits.', 30, 180);
+      ctx.fillText('2. Or upload the matching fixture PDF in the PDF Dock.', 30, 198);
 
       return c.toDataURL('image/png');
     }

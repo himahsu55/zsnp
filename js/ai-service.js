@@ -75,6 +75,158 @@
     }
 
     /**
+     * Generates clear, actionable guidance when a scanned barcode is NOT found in the planogram.
+     * Prevents the AI from going silent or disappearing.
+     */
+    async explainNotFound(scannedCode, rawCode, trimmedDigits = 0, activeDocName = 'Cheatsheet PDF') {
+      const isTrimmed = trimmedDigits > 0 && scannedCode !== rawCode;
+
+      if (this.hasApiKey()) {
+        try {
+          const prompt = 
+            `A retail warehouse/store worker scanned a barcode on a garment tag, but it is NOT in the planogram catalog.\n` +
+            `- Trimmed Code: "${scannedCode}"\n` +
+            `- Raw Scanned Barcode: "${rawCode}"\n` +
+            `- Trailing Digits Excluded: ${trimmedDigits}\n` +
+            `- Active Document: "${activeDocName}"\n\n` +
+            `Explain in 2 short, crisp bullet points why it might be missing:\n` +
+            `1. Diagnose if the Trim Dial needs adjustment (e.g. check digits or size digits trimmed or not trimmed).\n` +
+            `2. Suggest checking if the garment belongs to another fixture or if a new cheatsheet PDF should be uploaded.\n` +
+            `Keep it very direct, empathetic, and professional.`;
+
+          const aiReply = await this.callGemini(prompt);
+          if (aiReply) return aiReply;
+        } catch (err) {
+          console.warn('Gemini explainNotFound failed, using local diagnostic:', err);
+        }
+      }
+
+      // Local Instant Diagnostic Response
+      let trimAdvice = '';
+      if (isTrimmed) {
+        trimAdvice = `• **Trim Dial Active:** Currently trimming **${trimmedDigits} trailing digit${trimmedDigits === 1 ? '' : 's'}** (scanned \`${rawCode}\` → tested \`${scannedCode}\`). If the barcode did not contain check digits, try reducing the trim dial to 0.\n`;
+      } else {
+        trimAdvice = `• **Check Digits:** Currently trimming **0 digits**. If your physical tag has trailing size/batch digits (e.g. 11–13 digits), increase the **Digit Trim Rule** dial.\n`;
+      }
+
+      return (
+        `⚠️ **Item Not Found in ${activeDocName}:**\n` +
+        `• Code \`${scannedCode}\` (raw: \`${rawCode}\`) has no matching slot in this document.\n` +
+        trimAdvice +
+        `• **Action:** Verify the physical tag or upload the updated fixture PDF/slide in the **Cheatsheet PDF Dock**.`
+      );
+    }
+
+    /**
+     * Uses Gemini 2.5 Flash Vision to extract structured planogram items from rendered page canvases.
+     * Works for scanned PDFs, presentation slides, photos, and non-standard tables.
+     */
+    async extractPlanogramWithGeminiVision(pageCanvases, progressCallback) {
+      if (!this.hasApiKey()) {
+        console.warn('Gemini API Key not configured for Vision extraction.');
+        return [];
+      }
+
+      const allExtracted = [];
+      const totalPages = pageCanvases.length;
+
+      for (let i = 0; i < totalPages; i++) {
+        const canvas = pageCanvases[i];
+        const pageNum = i + 1;
+
+        if (progressCallback) {
+          progressCallback(pageNum, totalPages, `AI Vision analyzing page ${pageNum} of ${totalPages}...`);
+        }
+
+        try {
+          // Scale canvas down if huge for fast transmission
+          const maxDim = 1280;
+          let sendCanvas = canvas;
+          if (canvas.width > maxDim || canvas.height > maxDim) {
+            const scale = Math.min(maxDim / canvas.width, maxDim / canvas.height);
+            sendCanvas = document.createElement('canvas');
+            sendCanvas.width = Math.round(canvas.width * scale);
+            sendCanvas.height = Math.round(canvas.height * scale);
+            const sCtx = sendCanvas.getContext('2d');
+            sCtx.drawImage(canvas, 0, 0, sendCanvas.width, sendCanvas.height);
+          }
+
+          const base64Data = sendCanvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+          const pageItems = await this.callGeminiVisionPage(base64Data, pageNum);
+          if (Array.isArray(pageItems) && pageItems.length > 0) {
+            allExtracted.push(...pageItems);
+          }
+        } catch (err) {
+          console.warn(`Gemini Vision failed on page ${pageNum}:`, err);
+        }
+      }
+
+      return allExtracted;
+    }
+
+    async callGeminiVisionPage(base64Image, pageNum) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
+      const promptText = 
+        `You are a visual merchandising data extractor for retail store fixture sheets. ` +
+        `Examine this cheatsheet / planogram slide (Page ${pageNum}). ` +
+        `Extract all garment/product items shown. Look for product codes/barcodes (6-14 digits), ` +
+        `prices/signage (numbers, e.g. 899, 1299), colors, rack fixture name (e.g. M6, M8, M9, M10, MT2, or title), ` +
+        `and position/option numbers (1, 2, 3...).\n\n` +
+        `Return ONLY a raw JSON array of objects with keys:\n` +
+        `[{"code": "string", "section": "string", "position": number, "signage": "string", "color": "string", "slotType": "string", "remarks": "string"}]\n` +
+        `Do not wrap in markdown code fence. Output pure JSON.`;
+
+      const payload = {
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: promptText },
+              {
+                inlineData: {
+                  mimeType: 'image/jpeg',
+                  data: base64Image
+                }
+              }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 1500
+        }
+      };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error(`Gemini Vision HTTP ${res.status}`);
+
+      const data = await res.json();
+      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+        const raw = data.candidates[0].content.parts[0].text.trim();
+        const jsonMatch = raw.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          return parsed.map(item => ({
+            code: String(item.code || '').trim(),
+            section: item.section || `PAGE ${pageNum} FIXTURE`,
+            page: pageNum,
+            signage: String(item.signage || 'N/A').replace(/[^\d]/g, ''),
+            color: item.color || 'Standard',
+            position: Number(item.position) || 1,
+            slotType: item.slotType || (Number(item.position) <= 4 ? 'Hanger' : 'Shelf'),
+            remarks: item.remarks || ''
+          })).filter(x => x.code && x.code.length >= 4);
+        }
+      }
+      return [];
+    }
+
+    /**
      * Ask a general question to Gemini about the active PDF
      */
     async ask(userPrompt) {

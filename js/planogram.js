@@ -11,11 +11,14 @@
   class PlanogramEngine {
     constructor() {
       // Initialize with preloaded cheatsheet data if available
-      this.items = Array.isArray(window.DEFAULT_PLANOGRAM_DATA) 
+      this.defaultItems = Array.isArray(window.DEFAULT_PLANOGRAM_DATA) 
         ? [...window.DEFAULT_PLANOGRAM_DATA] 
         : [];
+      this.items = [...this.defaultItems];
       
       this.codeIndex = new Map();
+      this.pageTextMap = new Map();
+      this.pageSectionMap = new Map();
       this.rebuildIndex();
 
       this.currentPdfName = 'Default Retail Cheatsheet (M6-M10 & MT2)';
@@ -30,9 +33,44 @@
       });
     }
 
+    setItems(newItems, docName = '') {
+      if (Array.isArray(newItems) && newItems.length > 0) {
+        this.items = newItems;
+        this.rebuildIndex();
+        if (docName) this.currentPdfName = docName;
+        return true;
+      }
+      return false;
+    }
+
+    addItems(moreItems) {
+      if (!Array.isArray(moreItems) || moreItems.length === 0) return 0;
+      let added = 0;
+      moreItems.forEach(item => {
+        if (!item.code) return;
+        const cleanCode = String(item.code).trim();
+        if (!this.codeIndex.has(cleanCode)) {
+          this.items.push(item);
+          this.codeIndex.set(cleanCode, item);
+          added++;
+        }
+      });
+      return added;
+    }
+
+    resetToDefault() {
+      this.items = [...this.defaultItems];
+      this.rebuildIndex();
+      this.pageTextMap.clear();
+      this.pageSectionMap.clear();
+      this.currentPdfName = 'Default Retail Cheatsheet (M6-M10 & MT2)';
+    }
+
     /**
      * Look up a product in the planogram.
-     * Supports exact match, or prefix/suffix matching if check digits were partially trimmed.
+     * 1. Exact match in code index.
+     * 2. Loose match (substring/padded).
+     * 3. Document text search across raw pages of uploaded PDF/slides.
      */
     lookup(scannedCode) {
       if (!scannedCode) return null;
@@ -43,10 +81,30 @@
         return this.codeIndex.get(code);
       }
 
-      // 2. Loose match (e.g. if cheatsheet code is 9 digits and scanned code has leading/trailing zeroes or vice versa)
+      // 2. Loose match
       for (const [indexedCode, item] of this.codeIndex.entries()) {
         if (indexedCode.includes(code) || code.includes(indexedCode)) {
           return item;
+        }
+      }
+
+      // 3. Raw page text match from uploaded document
+      for (const [pageNum, pageText] of this.pageTextMap.entries()) {
+        if (pageText.includes(code)) {
+          const section = this.pageSectionMap.get(pageNum) || `DOCUMENT PAGE ${pageNum}`;
+          const synthItem = {
+            code: code,
+            section: section,
+            page: pageNum,
+            position: 1,
+            totalPositions: 1,
+            signage: 'In Document',
+            color: 'Detected in Document',
+            slotType: 'Document Match',
+            shelf: `Page ${pageNum}`,
+            remarks: `Found in document text on Page ${pageNum}`
+          };
+          return synthItem;
         }
       }
 
@@ -54,7 +112,7 @@
     }
 
     /**
-     * Parse an uploaded PDF file using PDF.js
+     * Parse an uploaded PDF file using PDF.js with multi-tier extraction
      */
     async parsePdfFile(file) {
       if (!window.pdfjsLib) {
@@ -66,57 +124,95 @@
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const extractedItems = [];
-        let currentSection = 'DISPLAY SECTION';
+        this.pageTextMap.clear();
+        this.pageSectionMap.clear();
 
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
           const page = await pdf.getPage(pageNum);
           const textContent = await page.getTextContent();
-          const pageText = textContent.items.map(item => item.str).join(' ');
+          const rawText = textContent.items.map(item => item.str).join(' ');
+          this.pageTextMap.set(pageNum, rawText);
 
-          // Detect Section title (e.g. M6 DENIM, M8 DENIM MONO, M9, M10, MT2-FRONT)
-          const sectionMatch = pageText.match(/(M[0-9]+[A-Z\s-]*|MT[0-9]+-[A-Z\s]+)/i);
+          // Detect Section or Slide title
+          let currentSection = `FIXTURE PAGE ${pageNum}`;
+          const sectionMatch = rawText.match(/(M[0-9]+[A-Z\s-]*|MT[0-9]+-[A-Z\s]+|BAY\s*[0-9]+|WALL\s*[0-9]+|RACK\s*[0-9]+)/i);
           if (sectionMatch) {
             currentSection = sectionMatch[0].trim();
+          } else {
+            // Check first line for title
+            const firstTokens = textContent.items.slice(0, 5).map(x => x.str).join(' ').trim();
+            if (firstTokens.length > 2 && firstTokens.length < 40) {
+              currentSection = firstTokens;
+            }
           }
+          this.pageSectionMap.set(pageNum, currentSection);
 
-          // Extract blocks with CODE: ... SIGNAGE: ... COLOR: ... POSITION: ...
-          // Using regex across page text
-          const codeRegex = /CODE\s*:\s*([0-9A-Z]+)/gi;
-          const signageRegex = /SIGNAGE\s*:\s*([0-9]+)/gi;
-          const colorRegex = /COLOR\s*:\s*([A-Z\s]+?)(?=POSITION|SIGNAGE|NEW|CODE|$)/gi;
-          const posRegex = /POSITION\s*:\s*([0-9]+)/gi;
-
+          // Tier 1: Look for labeled fields CODE: ... SIGNAGE: ...
+          const codeRegex = /(?:CODE|SKU|STYLE|BARCODE|ITEM)\s*[:#-]?\s*([0-9A-Z]{4,16})/gi;
           let match;
-          const codes = [];
-          while ((match = codeRegex.exec(pageText)) !== null) {
-            codes.push({ code: match[1], index: match.index });
+          const labeledCodes = [];
+          while ((match = codeRegex.exec(rawText)) !== null) {
+            labeledCodes.push({ code: match[1], index: match.index });
           }
 
-          // If standard OCR block format found
-          for (let i = 0; i < codes.length; i++) {
-            const cObj = codes[i];
-            const nextIdx = (i + 1 < codes.length) ? codes[i + 1].index : pageText.length;
-            const snippet = pageText.slice(cObj.index, nextIdx);
+          if (labeledCodes.length > 0) {
+            for (let i = 0; i < labeledCodes.length; i++) {
+              const cObj = labeledCodes[i];
+              const nextIdx = (i + 1 < labeledCodes.length) ? labeledCodes[i + 1].index : rawText.length;
+              const snippet = rawText.slice(cObj.index, nextIdx);
 
-            const sMatch = snippet.match(/SIGNAGE\s*:\s*([0-9]+)/i);
-            const colMatch = snippet.match(/COLOR\s*:\s*([A-Z0-9\s]+?)(?=POSITION|NEW|SIGNAGE|$)/i);
-            const pMatch = snippet.match(/POSITION\s*:\s*([0-9]+)/i);
-            const nlMatch = snippet.match(/NEW\s*LINE\s*:\s*(YES|NO)/i);
+              const sMatch = snippet.match(/(?:SIGNAGE|PRICE|MRP|INR|₹)\s*[:#-]?\s*([0-9]+)/i);
+              const colMatch = snippet.match(/(?:COLOR|COLOUR|SHADE)\s*[:#-]?\s*([A-Z0-9\s]+?)(?=POSITION|NEW|SIGNAGE|PRICE|CODE|$)/i);
+              const pMatch = snippet.match(/(?:POSITION|POS|OPT|OPTION)\s*[:#-]?\s*([0-9]+)/i);
+              const nlMatch = snippet.match(/NEW\s*LINE\s*:\s*(YES|NO)/i);
 
-            extractedItems.push({
-              code: cObj.code.trim(),
-              section: currentSection,
-              page: pageNum,
-              signage: sMatch ? sMatch[1] : 'N/A',
-              color: colMatch ? colMatch[1].trim() : 'Standard',
-              position: pMatch ? parseInt(pMatch[1], 10) : (i + 1),
-              totalPositions: codes.length,
-              slotType: pMatch && parseInt(pMatch[1], 10) <= 4 ? 'Hanger' : 'Shelf Stack',
-              shelf: `Position ${pMatch ? pMatch[1] : (i + 1)}`,
-              newLine: nlMatch ? nlMatch[1] : 'NO',
-              cutSize: snippet.includes('CUT SIZE') ? 'YES' : 'NO',
-              remarks: snippet.match(/REMARKS\s*:\s*([^.]+)/i) ? snippet.match(/REMARKS\s*:\s*([^.]+)/i)[1] : ''
-            });
+              extractedItems.push({
+                code: cObj.code.trim(),
+                section: currentSection,
+                page: pageNum,
+                signage: sMatch ? sMatch[1] : 'N/A',
+                color: colMatch ? colMatch[1].trim() : 'Standard',
+                position: pMatch ? parseInt(pMatch[1], 10) : (i + 1),
+                totalPositions: labeledCodes.length,
+                slotType: (pMatch && parseInt(pMatch[1], 10) <= 4) ? 'Hanger' : 'Shelf Stack',
+                shelf: `Position ${pMatch ? pMatch[1] : (i + 1)}`,
+                newLine: nlMatch ? nlMatch[1] : 'NO',
+                remarks: snippet.match(/REMARKS\s*:\s*([^.]+)/i) ? snippet.match(/REMARKS\s*:\s*([^.]+)/i)[1] : ''
+              });
+            }
+          } else {
+            // Tier 2: Universal Number Pattern Detection (6 to 14 digit retail barcode / SKU numbers)
+            const numRegex = /\b\d{6,14}\b/g;
+            const foundNumbers = [];
+            let nMatch;
+            while ((nMatch = numRegex.exec(rawText)) !== null) {
+              const val = nMatch[0];
+              // Avoid duplicate numbers in same page
+              if (!foundNumbers.some(x => x.code === val)) {
+                foundNumbers.push({ code: val, index: nMatch.index });
+              }
+            }
+
+            if (foundNumbers.length > 0) {
+              for (let i = 0; i < foundNumbers.length; i++) {
+                const fObj = foundNumbers[i];
+                const surrounding = rawText.slice(Math.max(0, fObj.index - 50), Math.min(rawText.length, fObj.index + 80));
+                const priceMatch = surrounding.match(/(?:₹|INR|Rs\.?|MRP)?\s*([0-9]{3,5})\b/);
+
+                extractedItems.push({
+                  code: fObj.code,
+                  section: currentSection,
+                  page: pageNum,
+                  signage: priceMatch ? priceMatch[1] : 'N/A',
+                  color: 'Option ' + (i + 1),
+                  position: i + 1,
+                  totalPositions: foundNumbers.length,
+                  slotType: (i + 1 <= 4) ? 'Hanger' : 'Shelf Stack',
+                  shelf: `Position ${i + 1}`,
+                  remarks: `Extracted from ${currentSection}`
+                });
+              }
+            }
           }
         }
 
@@ -126,8 +222,9 @@
           this.currentPdfName = file.name;
           return { success: true, count: extractedItems.length };
         } else {
-          // If PDF was pure raster without searchable text, retain existing cheatsheet
-          return { success: false, count: this.items.length };
+          // If no raw text codes could be parsed, retain index and mark ready for Vision or fallback
+          this.currentPdfName = file.name;
+          return { success: false, count: this.items.length, pagesCount: pdf.numPages };
         }
       } catch (err) {
         console.error('Error parsing PDF for cheatsheet items:', err);

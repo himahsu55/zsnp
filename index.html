@@ -189,7 +189,7 @@
         <!-- Header -->
         <div class="result-card-header">
           <div>
-            <div class="result-badge-label">📍 PLANOGRAM LOCATION IDENTIFIED</div>
+            <div class="result-badge-label" id="hud-badge-label">📍 PLANOGRAM LOCATION IDENTIFIED</div>
             <div class="result-section-name" id="hud-section-name">M6 DENIM</div>
           </div>
           <div class="result-pos-cluster">
@@ -199,10 +199,10 @@
         </div>
 
         <!-- 1. AI Placement Explanation Box -->
-        <div class="ai-speech-box">
+        <div class="ai-speech-box" id="hud-ai-speech-box">
           <div class="ai-speech-header">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12A10 10 0 0 1 12 2z"></path></svg>
-            <span>GEMINI AI PLACEMENT ADVISOR</span>
+            <span id="hud-ai-advisor-title">GEMINI AI PLACEMENT ADVISOR</span>
           </div>
           <div class="ai-speech-content" id="ai-placement-text">
             Place this in <strong>M6 DENIM</strong> at <strong>Position #1</strong> (Top hanging rail, 1st hanger on left). Signage is <strong>₹899</strong> and Color is <strong>WHITE</strong>. Instruction: Layer 1st piece of Option 1 with Option 3.
@@ -210,30 +210,30 @@
         </div>
 
         <!-- Key Specs Grid -->
-        <div class="result-meta-grid">
+        <div class="result-meta-grid" id="hud-meta-grid">
           <div class="meta-item">
             <span class="meta-label">Product Code</span>
             <span class="meta-value" id="hud-code-val">301081626</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Signage Price</span>
+            <span class="meta-label" id="hud-label-second">Signage Price</span>
             <span class="meta-value price" id="hud-price-val">₹899</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Color / Shade</span>
+            <span class="meta-label" id="hud-label-third">Color / Shade</span>
             <span class="meta-value" id="hud-color-val">WHITE</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Fixture Slot</span>
+            <span class="meta-label" id="hud-label-fourth">Fixture Slot</span>
             <span class="meta-value" id="hud-slot-type">Hanger 1</span>
           </div>
         </div>
 
         <!-- 2. CROPPED EXACT SNIPPET FROM THE ORIGINAL PDF -->
-        <div class="pdf-cropped-section">
+        <div class="pdf-cropped-section" id="hud-cropped-section">
           <div class="pdf-cropped-header">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line></svg>
-            <span>CROPPED DIRECTLY FROM CHEATSHEET PDF</span>
+            <span id="hud-cropped-header-title">CROPPED DIRECTLY FROM CHEATSHEET PDF</span>
           </div>
 
           <div class="pdf-cropped-visual-wrap" id="pdf-cropped-img-wrap">
@@ -244,6 +244,18 @@
 
         <!-- Mini Visual Rack Placement Diagram -->
         <div id="hud-visual-rack-wrap"></div>
+
+        <!-- Troubleshooting Quick Action Row (Shown when item is NOT found) -->
+        <div class="hud-action-row" id="hud-not-found-actions" style="display: none;">
+          <button type="button" class="btn-hud-action" id="btn-hud-adjust-trim">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+            Adjust Trim Dial
+          </button>
+          <button type="button" class="btn-hud-action" id="btn-hud-upload-pdf">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Upload PDF / Slide
+          </button>
+        </div>
       </div>
 
     </section>
@@ -290,7 +302,7 @@
         <!-- Active PDF Info Banner -->
         <div class="pdf-mobile-meta-box">
           <div class="pdf-info-row">
-            <div class="pdf-doc-badge">PDF</div>
+            <div class="pdf-doc-badge" id="pdf-doc-badge">PDF</div>
             <div class="pdf-details">
               <div class="pdf-name" id="pdf-name-label">Store Cheatsheet (M6-M10 &amp; MT2)</div>
               <div class="pdf-stats" id="pdf-size-label">6 Pages &bull; 62 Products Indexed</div>
@@ -300,9 +312,9 @@
           <div class="pdf-actions-row">
             <button type="button" class="btn-pdf-act" id="btn-replace-pdf">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-              Upload PDF
+              Upload Document
             </button>
-            <input type="file" id="pdf-file-input" accept="application/pdf,.pdf" style="display: none;">
+            <input type="file" id="pdf-file-input" accept="application/pdf,.pdf,image/*,.png,.jpg,.jpeg,.webp" style="display: none;">
 
             <button type="button" class="btn-pdf-act" id="btn-remove-pdf">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -314,17 +326,51 @@
         <!-- AI Extraction Progress Indicator -->
         <div class="ai-extraction-progress" id="ai-extract-progress" style="display: none;">
           <div class="progress-spinner"></div>
-          <span id="ai-extract-status-text">Gemini AI analyzing PDF fixture-by-fixture...</span>
+          <span id="ai-extract-status-text">Gemini AI analyzing document fixture-by-fixture...</span>
         </div>
 
-        <!-- Native PDF Viewer Frame -->
-        <div class="mobile-pdf-viewport-frame">
-          <div class="pdf-empty-placeholder" id="pdf-placeholder">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
-            <div style="font-weight: 600; color: #FFF; font-size: 13px;">Preloaded Cheatsheet Active</div>
-            <div style="font-size: 11.5px; opacity: 0.7;">Upload a custom PDF to scan new store fixtures</div>
+        <!-- Interactive Document Canvas Viewer (PDF / Presentation Slides / Photos) -->
+        <div class="doc-viewer-card">
+          <!-- Viewer Toolbar: Pagination & Zoom -->
+          <div class="doc-viewer-toolbar">
+            <div class="doc-page-controls">
+              <button type="button" class="btn-doc-nav" id="btn-doc-prev" title="Previous Page" aria-label="Previous Page">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
+              <div class="doc-page-indicator">
+                <span>Page</span>
+                <span class="doc-page-current" id="doc-current-page">1</span>
+                <span>/</span>
+                <span class="doc-page-total" id="doc-total-pages">1</span>
+              </div>
+              <button type="button" class="btn-doc-nav" id="btn-doc-next" title="Next Page" aria-label="Next Page">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+            </div>
+
+            <div class="doc-zoom-controls">
+              <button type="button" class="btn-doc-tool" id="btn-doc-zoom-out" title="Zoom Out" aria-label="Zoom Out">&minus;</button>
+              <span class="doc-zoom-label" id="doc-zoom-val">100%</span>
+              <button type="button" class="btn-doc-tool" id="btn-doc-zoom-in" title="Zoom In" aria-label="Zoom In">&plus;</button>
+              <button type="button" class="btn-doc-tool" id="btn-doc-fit" title="Fit to Width" aria-label="Fit to Width">Fit</button>
+            </div>
           </div>
-          <iframe id="pdf-frame" class="pdf-iframe" title="PDF Document Viewer"></iframe>
+
+          <!-- Document Canvas Viewport -->
+          <div class="doc-canvas-viewport" id="doc-canvas-viewport">
+            <div class="doc-loading-overlay" id="doc-loading-overlay" style="display: none;">
+              <div class="progress-spinner"></div>
+              <span>Rendering Document...</span>
+            </div>
+            <canvas id="doc-active-canvas" class="doc-active-canvas"></canvas>
+            <img id="doc-active-image" class="doc-active-image" style="display: none;" alt="Document Slide">
+          </div>
+
+          <!-- Format Compatibility & PPT Guidance Note -->
+          <div class="doc-format-note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>Supports <strong>PDF documents</strong> and <strong>slide images (.png, .jpg, .webp)</strong>. For PowerPoint (.ppt/.pptx), save or export as PDF for instant full-document indexing.</span>
+          </div>
         </div>
       </div>
     </section>
