@@ -78,7 +78,7 @@
       hudLabelFourth: document.getElementById('hud-label-fourth'),
       aiPlacementText: document.getElementById('ai-placement-text'),
       croppedProductImg: document.getElementById('cropped-product-img'),
-      hudCroppedHeaderTitle: document.getElementById('hud-cropped-header-title'),
+      hudCroppedHeaderTitle: document.getElementById('pdf-cropped-header-label') || document.getElementById('hud-cropped-header-title'),
       hudVisualRackWrap: document.getElementById('hud-visual-rack-wrap'),
       btnCloseHud: document.getElementById('btn-close-hud'),
       hudNotFoundActions: document.getElementById('hud-not-found-actions'),
@@ -288,29 +288,48 @@
       if (el.hudLabelFourth) el.hudLabelFourth.textContent = 'Fixture Slot';
       if (el.hudSlotType) el.hudSlotType.textContent = product.slotType || 'Hanger/Shelf';
 
+      // Check if real PDF is loaded into viewer/cropper
+      const hasRealDoc = Boolean(state.pdf && state.pdf.file) || (cropper.getPageCount() > 0 && Boolean(cropper.currentPdfDoc));
       if (el.hudCroppedHeaderTitle) {
-        el.hudCroppedHeaderTitle.textContent = 'CROPPED DIRECTLY FROM CHEATSHEET PDF';
+        el.hudCroppedHeaderTitle.textContent = hasRealDoc
+          ? 'CROPPED DIRECTLY FROM CHEATSHEET PDF'
+          : 'AI PLACEMENT CARD — UPLOAD REAL PDF FOR EXACT PHOTO';
       }
 
       // Hide troubleshooting actions
       if (el.hudNotFoundActions) el.hudNotFoundActions.style.display = 'none';
 
-      // 7A-1. Get Gemini AI Placement Explanation
+      // 7A-1. Get Gemini AI Placement Explanation (with resilient fallback)
       if (el.aiPlacementText) {
         el.aiPlacementText.textContent = 'Gemini AI generating exact placement instructions...';
-        ai.explainPlacement(scannedCode, product).then(text => {
-          el.aiPlacementText.innerHTML = formatMarkdown(text);
-        });
+        ai.explainPlacement(scannedCode, product)
+          .then(text => {
+            el.aiPlacementText.innerHTML = formatMarkdown(text);
+          })
+          .catch(err => {
+            console.warn('ai.explainPlacement failed:', err);
+            el.aiPlacementText.innerHTML =
+              `📍 <strong>Placement:</strong> Hang/Place in <strong>${escapeHtml(product.section)}</strong> at <strong>Position #${escapeHtml(String(product.position))}</strong>.<br>` +
+              `• <strong>Product:</strong> ${escapeHtml(product.color)} | <strong>Signage:</strong> ₹${escapeHtml(String(product.signage))}<br>` +
+              (product.remarks ? `• <strong>Rule:</strong> <em>${escapeHtml(product.remarks)}</em>` : '');
+          });
       }
 
-      // 7A-2. Crop Exact Physical Snippet from PDF Canvas
+      // 7A-2. Crop Exact Physical Snippet from PDF Canvas (with guaranteed fallback card)
       if (el.croppedProductImg) {
         el.croppedProductImg.alt = `Cropped PDF Snippet: ${product.code}`;
-        cropper.cropProductSnippet(product).then(dataUrl => {
-          if (dataUrl) {
-            el.croppedProductImg.src = dataUrl;
-          }
-        });
+        cropper.cropProductSnippet(product)
+          .then(dataUrl => {
+            if (dataUrl) {
+              el.croppedProductImg.src = dataUrl;
+            } else {
+              el.croppedProductImg.src = cropper.generateFallbackSnippet(product);
+            }
+          })
+          .catch(err => {
+            console.warn('cropper.cropProductSnippet failed:', err);
+            el.croppedProductImg.src = cropper.generateFallbackSnippet(product);
+          });
       }
 
       // 7A-3. Mini Rack Visualizer
@@ -353,12 +372,19 @@
       if (el.hudLabelFourth) el.hudLabelFourth.textContent = 'ACTIVE DOCUMENT';
       if (el.hudSlotType) el.hudSlotType.textContent = (state.pdf.name || 'Store Cheatsheet').slice(0, 16);
 
-      // AI Diagnostic Explanation
+      // AI Diagnostic Explanation (with resilient fallback)
       if (el.aiPlacementText) {
         el.aiPlacementText.textContent = 'Gemini AI diagnosing scanned barcode...';
-        ai.explainNotFound(scannedCode, rawCode, n, state.pdf.name).then(text => {
-          el.aiPlacementText.innerHTML = formatMarkdown(text);
-        });
+        ai.explainNotFound(scannedCode, rawCode, n, state.pdf.name)
+          .then(text => {
+            el.aiPlacementText.innerHTML = formatMarkdown(text);
+          })
+          .catch(err => {
+            console.warn('ai.explainNotFound failed:', err);
+            el.aiPlacementText.innerHTML =
+              `⚠️ <strong>Item Not Found:</strong> Code <code>${escapeHtml(scannedCode)}</code> has no matching slot in this cheatsheet.<br>` +
+              `• Check trimming dial or upload the matching PDF cheatsheet.`;
+          });
       }
 
       // Diagnostic Snippet Graphic

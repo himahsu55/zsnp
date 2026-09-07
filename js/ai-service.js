@@ -304,23 +304,116 @@
     }
 
     localFallbackAnswer(prompt, optionalError = null) {
-      const p = prompt.toLowerCase();
-      const items = this.planogramEngine.getAllItems();
+      if (!prompt || !prompt.trim()) {
+        return 'Please enter a product code, color, fixture name, or price to search.';
+      }
 
-      // Section query (M6, M8, M9, M10, MT2)
-      const secMatch = p.match(/(m6|m8|m9|m10|mt2)/);
-      if (secMatch) {
-        const sec = secMatch[0].toUpperCase();
-        const matches = items.filter(it => it.section.toUpperCase().includes(sec));
-        if (matches.length > 0) {
-          const sample = matches.slice(0, 4).map(m => `• **Pos ${m.position}**: \`${m.code}\` — ${m.color} (₹${m.signage})`).join('\n');
-          return `📦 **Fixture ${matches[0].section}:**\n${sample}\n*(${matches.length} total planned items).*`;
+      const p = prompt.trim().toLowerCase();
+      const items = this.planogramEngine.getAllItems();
+      if (!items || items.length === 0) {
+        return 'No items indexed in the cheatsheet catalog. Please upload a cheatsheet PDF or reset catalog.';
+      }
+
+      // 1. Direct Barcode / Number query
+      const codeMatch = p.match(/\b\d{6,14}\b/);
+      if (codeMatch) {
+        const found = this.planogramEngine.lookup(codeMatch[0]);
+        if (found) {
+          return `📍 **Found Item \`${found.code}\`:**\n` +
+            `• **Fixture**: **${found.section}** • **Slot**: Pos #${found.position} (${found.slotType || 'Slot'})\n` +
+            `• **Color**: ${found.color} | **Signage**: ₹${found.signage}\n` +
+            (found.remarks ? `• **Rule**: *${found.remarks}*\n` : '') +
+            `• **Doc Page**: Page ${found.page}`;
         }
       }
 
-      return `ℹ️ **Planogram Catalog Active:**\n` +
-        `Database contains **${items.length} items** across M6, M8, M9, M10, and MT2 fixtures.\n` +
-        `Scan any garment barcode to see its exact rack position and cropped PDF photo!`;
+      // 2. Count query ("kitne items", "how many", "total", "count")
+      if (/(kitne|how many|total|count|kitna|all items|kitne product)/i.test(p)) {
+        const secCounts = {};
+        items.forEach(it => {
+          secCounts[it.section] = (secCounts[it.section] || 0) + 1;
+        });
+        const breakdown = Object.entries(secCounts)
+          .map(([sec, cnt]) => `• **${sec}**: ${cnt} items`)
+          .join('\n');
+        return `📊 **Cheatsheet Catalog Summary:**\n` +
+          `• **Total Products Indexed**: **${items.length} items** across ${Object.keys(secCounts).length} fixture sections.\n` +
+          `**Section Breakdown:**\n${breakdown}\n\n` +
+          `*Scan any barcode or search by color/section for instant placement.*`;
+      }
+
+      // 3. Section query (M6, M8, M9, M10, MT2, FRONT, BACK)
+      const secMatch = p.match(/(m6|m8|m9|m10|mt2|mt2-front|mt2-back)/i);
+      if (secMatch) {
+        const secKey = secMatch[0].toUpperCase();
+        const matches = items.filter(it => it.section && it.section.toUpperCase().includes(secKey));
+        if (matches.length > 0) {
+          const sample = matches.slice(0, 6).map(m => 
+            `• **Pos #${m.position}**: \`${m.code}\` — **${m.color}** (₹${m.signage}) [${m.slotType || 'Slot'}]`
+          ).join('\n');
+          const remaining = matches.length > 6 ? `\n*...and ${matches.length - 6} more items in this rack.*` : '';
+          return `📦 **Fixture ${matches[0].section} (${matches.length} planned items):**\n${sample}${remaining}\n\n` +
+            `*Tip: Scan any of these codes to see their visual PDF slot crop.*`;
+        }
+      }
+
+      // 4. Price query ("₹899", "price 899", "899 rs", "899", "599", "699", "1299")
+      const priceMatch = p.match(/(?:price|mrp|rs\.?|inr|₹)?\s*([0-9]{3,5})\s*(?:rs|rupees|inr)?/i);
+      if (priceMatch && priceMatch[1]) {
+        const targetPrice = priceMatch[1];
+        const matches = items.filter(it => String(it.signage) === targetPrice);
+        if (matches.length > 0) {
+          const sample = matches.slice(0, 5).map(m => 
+            `• \`${m.code}\` — **${m.section}** Pos #${m.position} (${m.color})`
+          ).join('\n');
+          const remaining = matches.length > 5 ? `\n*...and ${matches.length - 5} more items at ₹${targetPrice}.*` : '';
+          return `🏷️ **Items with Signage ₹${targetPrice} (${matches.length} found):**\n${sample}${remaining}`;
+        }
+      }
+
+      // 5. Color query - match against actual colors in dataset
+      const allColors = Array.from(new Set(items.map(it => (it.color || '').toLowerCase().trim()).filter(Boolean)));
+      const matchedColor = allColors.find(col => {
+        const tokens = col.split(/\s+/);
+        return tokens.some(tok => tok.length > 2 && p.includes(tok)) || p.includes(col);
+      });
+      if (matchedColor) {
+        const matches = items.filter(it => (it.color || '').toLowerCase().includes(matchedColor));
+        if (matches.length > 0) {
+          const sample = matches.slice(0, 5).map(m => 
+            `• \`${m.code}\` — **${m.section}** Pos #${m.position} (₹${m.signage})`
+          ).join('\n');
+          const remaining = matches.length > 5 ? `\n*...and ${matches.length - 5} more ${matchedColor.toUpperCase()} items.*` : '';
+          return `🎨 **${matchedColor.toUpperCase()} Garments (${matches.length} items found):**\n${sample}${remaining}`;
+        }
+      }
+
+      // 6. Generic keyword search across all fields
+      const cleanWord = p.replace(/[^a-z0-9\s]/g, '').trim();
+      const words = cleanWord.split(/\s+/).filter(w => w.length >= 3);
+      if (words.length > 0) {
+        const matches = items.filter(it => {
+          const hay = `${it.code} ${it.section} ${it.color} ${it.remarks || ''} ${it.slotType || ''} ${it.shelf || ''}`.toLowerCase();
+          return words.some(w => hay.includes(w));
+        });
+        if (matches.length > 0) {
+          const sample = matches.slice(0, 5).map(m => 
+            `• \`${m.code}\` — **${m.section}** Pos #${m.position} (${m.color}, ₹${m.signage})`
+          ).join('\n');
+          const remaining = matches.length > 5 ? `\n*...and ${matches.length - 5} more matching items.*` : '';
+          return `🔍 **Found ${matches.length} items matching "${prompt}":**\n${sample}${remaining}`;
+        }
+      }
+
+      // 7. Helpful fallback guidance if nothing matched
+      return `ℹ️ **Scan Dock Local Assistant:**\n` +
+        `I couldn't find a direct match for *"${prompt}"* in the cheatsheet.\n\n` +
+        `**Try asking:**\n` +
+        `• **Section**: *"M6"*, *"M8"*, *"M9"*, *"M10"*, *"MT2"*\n` +
+        `• **Price**: *"price 899"*, *"₹599"*, *"699"*\n` +
+        `• **Color**: *"white"*, *"indigo"*, *"grey"*, *"taupe"*, *"coffee"*\n` +
+        `• **Total**: *"kitne items"*, *"how many"*, *"total products"*\n` +
+        `• **Barcode**: Enter any 9-digit barcode directly (e.g. \`301075847\`)`;
     }
   }
 

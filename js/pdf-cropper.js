@@ -123,95 +123,137 @@
      */
     async cropProductSnippet(product) {
       if (!product) return null;
-      const pageNum = product.page || 1;
 
-      let pageData = this.renderedPages.get(pageNum);
-      if (!pageData && this.currentPdfDoc) {
-        pageData = await this.renderPage(pageNum);
-      }
+      try {
+        const pageNum = product.page || 1;
 
-      if (!pageData) {
-        // Return a dynamically generated visual card if PDF canvas is not active
+        let pageData = this.renderedPages.get(pageNum);
+        if (!pageData && this.currentPdfDoc) {
+          pageData = await this.renderPage(pageNum);
+        }
+
+        if (!pageData || !pageData.canvas) {
+          // Return a dynamically generated visual card if PDF canvas is not active
+          return this.generateFallbackSnippet(product);
+        }
+
+        const { canvas, viewport, textItems } = pageData;
+        const W = canvas.width || 800;
+        const H = canvas.height || 600;
+
+        if (W <= 0 || H <= 0) {
+          return this.generateFallbackSnippet(product);
+        }
+
+        const cleanCode = String(product.code || '').trim();
+        const codeDigits = cleanCode.replace(/\D/g, '');
+        let matchedToken = null;
+
+        // 1. Search for single text token matching code
+        if (Array.isArray(textItems) && textItems.length > 0) {
+          for (let i = 0; i < textItems.length; i++) {
+            const item = textItems[i];
+            const str = (item.str || '').trim();
+            if (str && (str.includes(cleanCode) || (codeDigits && str.replace(/\D/g, '').includes(codeDigits)))) {
+              matchedToken = item;
+              break;
+            }
+          }
+
+          // 2. Search across multi-token window if barcode digits were split across adjacent text tokens
+          if (!matchedToken && cleanCode.length >= 4) {
+            for (let i = 0; i < textItems.length; i++) {
+              let combinedStr = '';
+              let combinedDigits = '';
+              for (let j = i; j < Math.min(i + 6, textItems.length); j++) {
+                const s = textItems[j].str || '';
+                combinedStr += s;
+                combinedDigits += s.replace(/\D/g, '');
+                if (combinedStr.includes(cleanCode) || (codeDigits && combinedDigits.includes(codeDigits))) {
+                  matchedToken = textItems[i];
+                  break;
+                }
+              }
+              if (matchedToken) break;
+            }
+          }
+        }
+
+        let cropX = 0, cropY = 0, cropW = 0, cropH = 0;
+
+        if (matchedToken && Array.isArray(matchedToken.transform) && matchedToken.transform.length >= 6) {
+          // PDF coordinates have origin at bottom-left: transform[4] is X, transform[5] is Y from bottom (points)
+          const pdfX = matchedToken.transform[4];
+          const pdfY = matchedToken.transform[5];
+
+          // Unscaled PDF page height in points
+          const unscaledH = (viewport && viewport.height)
+            ? (viewport.height / (this.dpiScale || 1))
+            : (H / (this.dpiScale || 1));
+
+          // Convert to canvas top-left coordinates:
+          const tx = pdfX * (this.dpiScale || 1);
+          const ty = (unscaledH - pdfY) * (this.dpiScale || 1);
+
+          // Bounding box: include the product photo above the code and the metadata box
+          const boxWidth = Math.max(80, W * 0.17);
+          const boxHeight = Math.max(100, H * 0.32);
+
+          cropX = tx - (boxWidth * 0.15);
+          cropY = ty - (boxHeight * 0.65);
+          cropW = boxWidth * 1.3;
+          cropH = boxHeight * 1.25;
+        } else {
+          // Fallback: Grid layout math based on position (5 columns per row, wrapped & clamped)
+          const pos = Math.max(1, parseInt(product.position, 10) || 1);
+          const colCount = 5;
+          const col = (pos - 1) % colCount;
+          const row = Math.min(2, Math.floor((pos - 1) / colCount));
+
+          const gridStartX = W * 0.26;
+          const gridWidth = W * 0.73;
+          const cellW = gridWidth / colCount;
+          const cellH = H * 0.31;
+
+          cropX = gridStartX + (col * cellW);
+          cropY = (H * 0.05) + (row * cellH);
+          cropW = cellW * 0.96;
+          cropH = cellH * 0.94;
+        }
+
+        // Safety-clamp dimensions: minimum 40px, strictly inside page bounds
+        cropX = Math.max(0, Math.min(cropX, W - 40));
+        cropY = Math.max(0, Math.min(cropY, H - 40));
+        cropW = Math.max(40, Math.min(cropW, W - cropX));
+        cropH = Math.max(40, Math.min(cropH, H - cropY));
+
+        // Render crop to destination canvas
+        const destCanvas = document.createElement('canvas');
+        destCanvas.width = Math.round(cropW);
+        destCanvas.height = Math.round(cropH);
+        const destCtx = destCanvas.getContext('2d');
+
+        if (!destCtx) {
+          return this.generateFallbackSnippet(product);
+        }
+
+        // Draw cropped area from full page canvas
+        destCtx.drawImage(
+          canvas,
+          Math.round(cropX), Math.round(cropY), Math.round(cropW), Math.round(cropH),
+          0, 0, Math.round(cropW), Math.round(cropH)
+        );
+
+        // Add thin subtle laser border on the cropped piece
+        destCtx.strokeStyle = '#FF473A';
+        destCtx.lineWidth = 4;
+        destCtx.strokeRect(0, 0, destCanvas.width, destCanvas.height);
+
+        return destCanvas.toDataURL('image/png');
+      } catch (err) {
+        console.warn('cropProductSnippet failed, returning fallback card:', err);
         return this.generateFallbackSnippet(product);
       }
-
-      const { canvas, viewport, textItems } = pageData;
-      const W = canvas.width;
-      const H = canvas.height;
-
-      // 1. Search for text token matching product code
-      const cleanCode = String(product.code).trim();
-      let matchedToken = null;
-
-      for (const item of textItems) {
-        if (item.str && item.str.includes(cleanCode)) {
-          matchedToken = item;
-          break;
-        }
-      }
-
-      let cropX = 0, cropY = 0, cropW = 0, cropH = 0;
-
-      if (matchedToken && matchedToken.transform) {
-        // PDF coordinates have origin at bottom-left, convert to canvas top-left
-        const tx = matchedToken.transform[4] * this.dpiScale;
-        const ty = (viewport.rawDims ? viewport.rawDims.pageHeight : (H / this.dpiScale) - matchedToken.transform[5]) * this.dpiScale;
-
-        // Bounding box: include the product photo above the code and the metadata box
-        const boxWidth = W * 0.17; // Approx width of one garment box
-        const boxHeight = H * 0.32; // Includes photo + code + color + price
-        
-        cropX = Math.max(0, tx - (boxWidth * 0.15));
-        cropY = Math.max(0, ty - (boxHeight * 0.65));
-        cropW = Math.min(W - cropX, boxWidth * 1.3);
-        cropH = Math.min(H - cropY, boxHeight * 1.25);
-      } else {
-        // Fallback: Grid layout math based on position (Positions 1-4 top row, 5-9 middle, 10-14 bottom)
-        const pos = product.position || 1;
-        const colCount = 5;
-        let col = 0, row = 0;
-
-        if (pos <= 5) {
-          row = 0;
-          col = pos - 1;
-        } else if (pos <= 10) {
-          row = 1;
-          col = pos - 6;
-        } else {
-          row = 2;
-          col = pos - 11;
-        }
-
-        const gridStartX = W * 0.26; // Products start to the right of fixture diagram
-        const gridWidth = W * 0.73;
-        const cellW = gridWidth / colCount;
-        const cellH = H * 0.31;
-
-        cropX = gridStartX + (col * cellW);
-        cropY = H * 0.05 + (row * cellH);
-        cropW = cellW * 0.96;
-        cropH = cellH * 0.94;
-      }
-
-      // Render crop to destination canvas
-      const destCanvas = document.createElement('canvas');
-      destCanvas.width = Math.round(cropW);
-      destCanvas.height = Math.round(cropH);
-      const destCtx = destCanvas.getContext('2d');
-
-      // Draw cropped area from full page canvas
-      destCtx.drawImage(
-        canvas,
-        Math.round(cropX), Math.round(cropY), Math.round(cropW), Math.round(cropH),
-        0, 0, Math.round(cropW), Math.round(cropH)
-      );
-
-      // Add thin subtle laser border on the cropped piece
-      destCtx.strokeStyle = '#FF473A';
-      destCtx.lineWidth = 4;
-      destCtx.strokeRect(0, 0, destCanvas.width, destCanvas.height);
-
-      return destCanvas.toDataURL('image/png');
     }
 
     /**
