@@ -699,46 +699,72 @@
       const query = (searchFilter || '').toLowerCase().trim();
       const firstItem = items[0];
 
-      let hangersHtml = '';
-      let shelvesHtml = '';
+      // Sort items by actual planned position
+      const sorted = [...items].sort((a, b) => (parseInt(a.position, 10) || 0) - (parseInt(b.position, 10) || 0));
 
-      for (let pos = 1; pos <= Math.min(4, items.length); pos++) {
-        const it = items.find(x => x.position === pos);
-        const matchesQuery = query && it && (it.code.includes(query) || it.color.toLowerCase().includes(query));
-        hangersHtml += `
-          <div class="rack-slot ${matchesQuery ? 'active-slot' : ''}">
-            <span class="slot-pos-badge">#${pos}</span>
-            <span class="slot-item-name">${it ? it.color : 'Opt ' + pos}</span>
-            <span style="font-family: var(--font-mono); font-size: 8.5px; color: #55E497;">₹${it ? it.signage : ''}</span>
+      const hangers = [];
+      const shelves = [];
+
+      sorted.forEach((it, idx) => {
+        const slotType = (it.slotType || '').toLowerCase();
+        const shelf = (it.shelf || '').toLowerCase();
+        if (slotType.includes('hanger') || slotType.includes('shacket') || shelf.includes('hanger') || shelf.includes('top') || (idx < 4 && !shelf.includes('shelf') && !shelf.includes('stack') && !slotType.includes('shelf') && !slotType.includes('stack'))) {
+          hangers.push(it);
+        } else {
+          shelves.push(it);
+        }
+      });
+
+      const renderSlot = (it, isHanger = false) => {
+        const pos = it.position;
+        const matchesQuery = query && (it.code.includes(query) || (it.color || '').toLowerCase().includes(query) || String(pos) === query);
+        const isNewLine = String(it.newLine || '').trim().toUpperCase() === 'YES';
+        return `
+          <div class="rack-slot ${isHanger ? 'hanger-slot' : 'shelf-slot'} ${matchesQuery ? 'active-slot slot-blinking-target' : ''} ${isNewLine ? 'slot-is-new-line' : ''}" 
+               data-pos="${pos}" data-code="${escapeHtml(it.code)}" style="cursor: pointer;" title="Code: ${escapeHtml(it.code)} • ${escapeHtml(it.color)} (Click to view)">
+            ${isHanger ? '<div class="slot-hanger-hook"></div>' : ''}
+            <div class="slot-box">
+              <div class="slot-top-labels">
+                <span class="slot-pos-badge">#${pos}</span>
+                ${isNewLine ? '<span class="slot-new-tag">NEW</span>' : ''}
+              </div>
+              <span class="slot-item-name">${escapeHtml(it.color || 'Opt ' + pos)}</span>
+              <span class="slot-item-price">₹${it.signage || ''}</span>
+            </div>
           </div>
         `;
-      }
+      };
 
-      for (let pos = 5; pos <= items.length; pos++) {
-        const it = items.find(x => x.position === pos);
-        const matchesQuery = query && it && (it.code.includes(query) || it.color.toLowerCase().includes(query));
-        shelvesHtml += `
-          <div class="rack-slot ${matchesQuery ? 'active-slot' : ''}">
-            <span class="slot-pos-badge">#${pos}</span>
-            <span class="slot-item-name">${it ? it.color : 'Opt ' + pos}</span>
-            <span style="font-family: var(--font-mono); font-size: 8.5px; color: #55E497;">₹${it ? it.signage : ''}</span>
-          </div>
-        `;
-      }
+      const hangersHtml = hangers.map(it => renderSlot(it, true)).join('');
+      const shelvesHtml = shelves.map(it => renderSlot(it, false)).join('');
 
       el.fullRackDisplay.innerHTML = `
         <div class="visual-rack-container">
           <div class="rack-header-label">
             <span>RACK SECTION: ${sectionName}</span>
-            <span class="badge-active-pos">${items.length} POSITIONS</span>
+            <span class="badge-active-pos">${items.length} POSITIONS (SLOTS #${sorted[0].position}&ndash;#${sorted[sorted.length - 1].position})</span>
           </div>
-          <div class="rack-rail-label">TOP HANGING RAIL</div>
-          <div class="rack-hanger-row">${hangersHtml}</div>
-          <div class="rack-rail-label" style="margin-top: 8px;">FOLDED SHELF TIERS</div>
-          <div class="rack-shelf-grid">${shelvesHtml}</div>
-          ${firstItem && firstItem.remarks ? `<div style="font-size: 11px; color: #FFB5AF; margin-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">Instruction: ${firstItem.remarks}</div>` : ''}
+          ${hangers.length > 0 ? `
+            <div class="rack-rail-label">TOP HANGING RAIL (${hangers.length} options)</div>
+            <div class="rack-hanger-row">${hangersHtml}</div>
+          ` : ''}
+          ${shelves.length > 0 ? `
+            <div class="rack-rail-label" style="margin-top: 10px;">FOLDED SHELF TIERS (${shelves.length} options)</div>
+            <div class="rack-shelf-grid">${shelvesHtml}</div>
+          ` : ''}
+          ${firstItem && firstItem.remarks ? `<div style="font-size: 11px; color: #FFB5AF; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px;">📋 Display Rule: ${escapeHtml(firstItem.remarks)}</div>` : ''}
         </div>
       `;
+
+      // Make slots clickable so tapping any slot navigates to it and displays its HUD
+      el.fullRackDisplay.querySelectorAll('.rack-slot[data-code]').forEach(slotEl => {
+        slotEl.addEventListener('click', () => {
+          const code = slotEl.getAttribute('data-code');
+          if (code) {
+            handleScanEvent(code, 'MANUAL_SELECTION');
+          }
+        });
+      });
     }
 
     if (el.sectionPillsRow) {

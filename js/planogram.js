@@ -381,7 +381,7 @@
      * Used to overlay the animated pulsing radar beacon ("Ye Yahan Pe Lagega")
      */
     getFixtureBeaconCoordinates(product) {
-      if (!product) return { x: 50, y: 50, label: 'SLOT #1' };
+      if (!product) return { x: 50, y: 50, xPct: 50, yPct: 50, label: 'SLOT #1' };
 
       const pNum = product.page || 1;
       const pos = parseInt(product.position, 10) || 1;

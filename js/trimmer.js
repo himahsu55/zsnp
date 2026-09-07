@@ -11,6 +11,7 @@
       this.maxN = 12;
       this.onTrimChangeCallbacks = [];
       this.sampleBarcode = '301081626001'; // Default sample showing 9-digit code with 3 check digits
+      this.dom = {};
     }
 
     init(initialValue = 0) {
@@ -81,6 +82,7 @@
     }
 
     updateUI() {
+      if (!this.dom || Object.keys(this.dom).length === 0) return;
       const n = this.trimN;
 
       if (this.dom.dialNum) this.dom.dialNum.textContent = n;
