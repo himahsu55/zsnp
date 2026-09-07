@@ -586,31 +586,46 @@
       el.newlinesCatalogGrid.innerHTML = filtered.map(item => {
         return `
           <div class="newline-card" data-code="${escapeHtml(item.code)}">
-            <div class="newline-card-header">
-              <span class="newline-card-pos">POS #${item.position}</span>
-              <span class="badge-new-line" style="font-size: 9px; padding: 2px 7px;">🔥 NEW LINE</span>
-            </div>
-            <div class="newline-thumb-wrap">
-              <img class="newline-thumb-img" id="thumb-${item.code}" alt="${escapeHtml(item.color)}" src="${cropper.generateFallbackSnippet(item)}">
-            </div>
-            <div class="newline-card-body">
-              <div class="newline-card-code">${escapeHtml(item.code)}</div>
-              <div class="newline-card-color">${escapeHtml(item.color)}</div>
-              <div class="newline-card-specs">
-                <span class="newline-spec-price">₹${item.signage}</span>
-                <span class="newline-spec-section">${escapeHtml(item.section)}</span>
+            <!-- Full Width Card Top Row -->
+            <div class="newline-card-toprow">
+              <div class="newline-top-left">
+                <span class="newline-pos-badge">POS #${item.position}</span>
+                <span class="newline-section-pill">${escapeHtml(item.section)}</span>
               </div>
-              <div class="newline-card-slot">
-                📍 <strong>Slot:</strong> ${escapeHtml(item.slotType || 'Hanger/Shelf')}
+              <span class="badge-new-line pulse-glow">🔥 NEW LINE</span>
+            </div>
+
+            <!-- Card Main Row: Thumbnail + Info -->
+            <div class="newline-card-main">
+              <div class="newline-thumb-wrap">
+                <img class="newline-thumb-img" id="thumb-${item.code}" alt="${escapeHtml(item.color)}" src="${cropper.generateFallbackSnippet(item)}">
               </div>
-              ${item.remarks ? `<div class="newline-card-remarks">${escapeHtml(item.remarks)}</div>` : ''}
-              <div class="newline-card-actions">
-                <button type="button" class="btn-newline-action btn-locate-floor" data-code="${escapeHtml(item.code)}">
-                  📍 Locate on Floor & Blink
-                </button>
-                <button type="button" class="btn-newline-action btn-sim-scan" data-code="${escapeHtml(item.code)}">
-                  ⚡ Simulate Scan
-                </button>
+
+              <div class="newline-card-info">
+                <div class="newline-title-row">
+                  <span class="newline-color-title">${escapeHtml(item.color)}</span>
+                  <span class="newline-price-tag">₹${item.signage}</span>
+                </div>
+
+                <div class="newline-code-chip">
+                  <span class="newline-code-lbl">CODE:</span>
+                  <span class="newline-code-val">${escapeHtml(item.code)}</span>
+                </div>
+
+                <div class="newline-meta-slot">
+                  📍 <strong>Slot:</strong> ${escapeHtml(item.slotType || 'Hanger/Shelf')}
+                </div>
+
+                ${item.remarks ? `<div class="newline-card-remarks">💡 ${escapeHtml(item.remarks)}</div>` : ''}
+
+                <div class="newline-actions-row">
+                  <button type="button" class="btn-locate-floor" data-code="${escapeHtml(item.code)}" title="Locate on Floor Fixture & Blink">
+                    📍 Locate & Blink
+                  </button>
+                  <button type="button" class="btn-sim-scan" data-code="${escapeHtml(item.code)}" title="Simulate Barcode Scan">
+                    ⚡ Scan
+                  </button>
+                </div>
               </div>
             </div>
           </div>
