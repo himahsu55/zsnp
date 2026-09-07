@@ -1,7 +1,7 @@
 /**
  * Main Mobile App Controller — Scan Dock v2.0
- * Handles Mobile Tab Navigation, Quick Scanner View, Visual Rack Section Switcher,
- * Instant Result Bottom Sheet, and CSV/JSON Exports.
+ * Coordinates Gemini AI Fixture Analyzer, PDF Canvas Cropper,
+ * Mobile Tab Navigation, Scanner, and Database Sync.
  */
 (function(window) {
   'use strict';
@@ -28,23 +28,30 @@
 
     const planogram = new window.PlanogramEngine();
     const ai = new window.AiService(planogram);
+    const cropper = new window.PdfCropper();
+    const db = new window.DbSync();
 
-    window.App = { state, trimmer, scanner, planogram, ai };
+    window.App = { state, trimmer, scanner, planogram, ai, cropper, db };
 
     // 2. DOM Elements
     const el = {
-      // Header status
-      catalogLabel: document.getElementById('header-catalog-label'),
-      scannerLabel: document.getElementById('header-scanner-label'),
-      scannerDot: document.getElementById('header-scanner-dot'),
-      trimLabel: document.getElementById('header-trim-label'),
+      // Header & API Key Banner
+      apiKeyBanner: document.getElementById('api-key-banner'),
+      keyDot: document.getElementById('key-dot'),
+      keyStatusText: document.getElementById('key-status-text'),
+      btnBannerKeyAct: document.getElementById('btn-banner-key-act'),
+      btnAiSettings: document.getElementById('btn-ai-settings'),
+      apiKeyModal: document.getElementById('api-key-modal'),
+      btnCloseApiKey: document.getElementById('btn-close-apikey'),
+      apiKeyInput: document.getElementById('gemini-key-input'),
+      btnSaveApiKey: document.getElementById('btn-save-apikey'),
 
-      // Navigation
+      // Navigation Tabs
       navTabs: document.querySelectorAll('.nav-tab-btn'),
       tabScreens: document.querySelectorAll('.app-tab-screen'),
       navLogCount: document.getElementById('nav-log-count'),
 
-      // Scanner View Elements
+      // Scanner Viewport & Quick Controls
       quickTrimDisplay: document.getElementById('quick-trim-display'),
       btnQuickTrimMinus: document.getElementById('btn-quick-trim-minus'),
       btnQuickTrimPlus: document.getElementById('btn-quick-trim-plus'),
@@ -57,7 +64,7 @@
       manualInput: document.getElementById('manual-barcode-input'),
       manualFormat: document.getElementById('manual-format-select'),
 
-      // Result Bottom Sheet Card
+      // Result Bottom Sheet Card (AI & Cropped PDF Snippet)
       locationHud: document.getElementById('location-hud'),
       hudSectionName: document.getElementById('hud-section-name'),
       hudPosBadge: document.getElementById('hud-pos-badge'),
@@ -65,7 +72,8 @@
       hudPriceVal: document.getElementById('hud-price-val'),
       hudColorVal: document.getElementById('hud-color-val'),
       hudSlotType: document.getElementById('hud-slot-type'),
-      hudRemarksText: document.getElementById('hud-remarks-text'),
+      aiPlacementText: document.getElementById('ai-placement-text'),
+      croppedProductImg: document.getElementById('cropped-product-img'),
       hudVisualRackWrap: document.getElementById('hud-visual-rack-wrap'),
       btnCloseHud: document.getElementById('btn-close-hud'),
 
@@ -74,8 +82,7 @@
       rackSearchInput: document.getElementById('rack-search-input'),
       fullRackDisplay: document.getElementById('full-rack-display'),
 
-      // PDF Cheatsheet Tab
-      pdfDropzone: document.getElementById('pdf-dropzone'),
+      // PDF Tab
       pdfFileInput: document.getElementById('pdf-file-input'),
       pdfNameLabel: document.getElementById('pdf-name-label'),
       pdfSizeLabel: document.getElementById('pdf-size-label'),
@@ -83,6 +90,8 @@
       btnReplacePdf: document.getElementById('btn-replace-pdf'),
       pdfPlaceholder: document.getElementById('pdf-placeholder'),
       pdfFrame: document.getElementById('pdf-frame'),
+      aiExtractProgress: document.getElementById('ai-extract-progress'),
+      aiExtractStatusText: document.getElementById('ai-extract-status-text'),
 
       // Log Tab
       resultsCountBadge: document.getElementById('results-count-badge'),
@@ -94,52 +103,83 @@
       btnExportJson: document.getElementById('btn-export-json'),
       btnClearLog: document.getElementById('btn-clear-log'),
 
-      // AI Drawer & Key Modal
+      // AI Chat Drawer
       btnOpenAi: document.getElementById('btn-open-ai'),
       aiDrawer: document.getElementById('ai-drawer'),
       btnCloseAi: document.getElementById('btn-close-ai'),
       aiMessages: document.getElementById('ai-messages'),
       aiInput: document.getElementById('ai-input'),
-      btnAiSend: document.getElementById('btn-ai-send'),
-      btnAiSettings: document.getElementById('btn-ai-settings'),
-      apiKeyModal: document.getElementById('api-key-modal'),
-      btnCloseApiKey: document.getElementById('btn-close-apikey'),
-      apiKeyInput: document.getElementById('gemini-key-input'),
-      btnSaveApiKey: document.getElementById('btn-save-apikey')
+      btnAiSend: document.getElementById('btn-ai-send')
     };
 
-    // 3. Tab Navigation Switcher
+    // 3. API Key Banner State
+    function updateApiKeyUI() {
+      const hasKey = ai.hasApiKey();
+      if (el.keyDot) el.keyDot.classList.toggle('active', hasKey);
+      if (el.keyStatusText) {
+        el.keyStatusText.textContent = hasKey 
+          ? 'Gemini AI Active (gemini-2.5-flash)' 
+          : 'Gemini AI Key: Not Set (Using Local Engine)';
+      }
+      if (el.btnBannerKeyAct) {
+        el.btnBannerKeyAct.textContent = hasKey ? 'Change' : 'Enter Key';
+      }
+    }
+    updateApiKeyUI();
+
+    if (el.btnBannerKeyAct) {
+      el.btnBannerKeyAct.addEventListener('click', () => {
+        if (el.apiKeyInput) el.apiKeyInput.value = ai.getApiKey();
+        if (el.apiKeyModal) el.apiKeyModal.classList.add('open');
+      });
+    }
+
+    if (el.btnAiSettings) {
+      el.btnAiSettings.addEventListener('click', () => {
+        if (el.apiKeyInput) el.apiKeyInput.value = ai.getApiKey();
+        if (el.apiKeyModal) el.apiKeyModal.classList.add('open');
+      });
+    }
+
+    if (el.btnCloseApiKey) {
+      el.btnCloseApiKey.addEventListener('click', () => el.apiKeyModal.classList.remove('open'));
+    }
+
+    if (el.btnSaveApiKey) {
+      el.btnSaveApiKey.addEventListener('click', () => {
+        const key = el.apiKeyInput.value.trim();
+        ai.setApiKey(key);
+        updateApiKeyUI();
+        if (el.apiKeyModal) el.apiKeyModal.classList.remove('open');
+        showToast(key ? 'Gemini API Key saved' : 'Using local zero-latency engine', 'success');
+      });
+    }
+
+    // 4. Tab Navigation Switcher
     function switchTab(targetTabId) {
       state.activeTab = targetTabId;
 
-      // Update Nav Buttons
       el.navTabs.forEach(btn => {
         btn.classList.toggle('active', btn.getAttribute('data-tab') === targetTabId);
       });
 
-      // Update Tab Screens
       el.tabScreens.forEach(screen => {
         screen.classList.toggle('active', screen.id === targetTabId);
       });
 
-      // If switching to Rack tab, render current section rack
       if (targetTabId === 'tab-rack') {
         renderFullRackView(state.activeSection);
       }
     }
 
     el.navTabs.forEach(btn => {
-      btn.addEventListener('click', () => {
-        const tab = btn.getAttribute('data-tab');
-        switchTab(tab);
-      });
+      btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
     });
 
-    // 4. Quick Trimmer on Scanner Screen
+    // 5. Quick Trimmer on Scanner Screen
     function updateQuickTrimDisplay() {
       const n = trimmer.getTrim();
       if (el.quickTrimDisplay) el.quickTrimDisplay.textContent = `${n} digit${n === 1 ? '' : 's'}`;
-      if (el.trimLabel) el.trimLabel.textContent = `Trim: -${n}`;
     }
 
     if (el.btnQuickTrimMinus) {
@@ -159,22 +199,25 @@
     trimmer.onTrimChange(() => updateQuickTrimDisplay());
     updateQuickTrimDisplay();
 
-    // 5. Central Barcode Scan Processor
-    function handleScanEvent(rawCode, format = 'UNKNOWN') {
+    // 6. Central Barcode Scan Processor (AI Explanation + Cropped PDF Snippet)
+    async function handleScanEvent(rawCode, format = 'UNKNOWN') {
       const trimmedCode = trimmer.apply(rawCode);
       const now = new Date();
 
-      // Planogram Cheatsheet Lookup
+      // Cheatsheet Lookup
       const product = planogram.lookup(trimmedCode) || planogram.lookup(rawCode);
 
       let locationLabel = 'Not in Cheatsheet';
       if (product) {
         locationLabel = `${product.section} • Pos #${product.position}`;
         state.activeSection = product.section;
-        displayLocationHud(product);
         showToast(`📍 Found: ${product.section} Pos #${product.position}`, 'success');
+
+        // Render AI Explanation and Cropped PDF Snippet
+        await displayLocationResult(product, trimmedCode);
       } else {
         showToast(`Scanned: ${trimmedCode}`, 'info');
+        if (el.locationHud) el.locationHud.classList.remove('active');
       }
 
       // Record in Session Log
@@ -196,21 +239,10 @@
     }
 
     // Connect Scanner Callbacks
-    scanner.onScan((code, format) => {
-      handleScanEvent(code, format);
-    });
+    scanner.onScan((code, format) => handleScanEvent(code, format));
 
-    scanner.onStatusChange((isActive) => {
-      if (el.scannerLabel) {
-        el.scannerLabel.textContent = isActive ? 'Live Scanning 60 FPS' : 'Scanner Standby';
-      }
-      if (el.scannerDot) {
-        el.scannerDot.classList.toggle('active', isActive);
-      }
-    });
-
-    // 6. Display Location Bottom Card
-    function displayLocationHud(product) {
+    // 7. Display AI Placement & Cropped PDF Snippet
+    async function displayLocationResult(product, scannedCode) {
       if (!el.locationHud || !product) return;
 
       el.hudSectionName.textContent = product.section;
@@ -220,18 +252,31 @@
       el.hudColorVal.textContent = product.color;
       el.hudSlotType.textContent = product.slotType || 'Hanger/Shelf';
 
-      if (product.remarks) {
-        el.hudRemarksText.style.display = 'block';
-        el.hudRemarksText.textContent = product.remarks;
-      } else {
-        el.hudRemarksText.style.display = 'none';
+      // 7A. Get Gemini AI Placement Explanation
+      if (el.aiPlacementText) {
+        el.aiPlacementText.textContent = 'Gemini AI generating exact placement instructions...';
+        ai.explainPlacement(scannedCode, product).then(text => {
+          el.aiPlacementText.innerHTML = formatMarkdown(text);
+        });
       }
 
-      // Render Visual Rack
-      el.hudVisualRackWrap.innerHTML = planogram.renderRackVisualizer(product);
+      // 7B. Crop Exact Physical Snippet from PDF Canvas
+      if (el.croppedProductImg) {
+        el.croppedProductImg.alt = `Cropped PDF Snippet: ${product.code}`;
+        cropper.cropProductSnippet(product).then(dataUrl => {
+          if (dataUrl) {
+            el.croppedProductImg.src = dataUrl;
+          }
+        });
+      }
+
+      // 7C. Mini Rack Visualizer
+      if (el.hudVisualRackWrap) {
+        el.hudVisualRackWrap.innerHTML = planogram.renderRackVisualizer(product);
+      }
+
       el.locationHud.classList.add('active');
 
-      // If user is on another tab, switch to scanner to see the result
       if (state.activeTab !== 'tab-scanner') {
         switchTab('tab-scanner');
       }
@@ -245,7 +290,7 @@
       });
     }
 
-    // 7. Full Rack View Tab Renderer
+    // 8. Visual Rack Map Tab Renderer
     function renderFullRackView(sectionName, searchFilter = '') {
       if (!el.fullRackDisplay) return;
 
@@ -317,8 +362,8 @@
       });
     }
 
-    // 8. Cheatsheet PDF Loading & Parsing
-    function loadPdf(file) {
+    // 9. PDF Upload & Full AI/Canvas Extraction
+    async function loadPdf(file) {
       if (!file) return;
       if (state.pdf.blobUrl) URL.revokeObjectURL(state.pdf.blobUrl);
 
@@ -335,18 +380,32 @@
         el.pdfFrame.src = state.pdf.blobUrl;
       }
 
-      if (el.catalogLabel) el.catalogLabel.textContent = file.name;
-      showToast(`Loading & Parsing: ${file.name}...`, 'info');
+      if (el.aiExtractProgress) el.aiExtractProgress.style.display = 'flex';
+      showToast(`Loading & Reading: ${file.name}...`, 'info');
 
-      planogram.parsePdfFile(file).then(res => {
+      try {
+        const buffer = await file.arrayBuffer();
+
+        // 1. Render for Visual PDF Cropping
+        await cropper.loadPdfDocument(buffer);
+
+        // 2. Parse Text & Extract Planogram Items
+        const res = await planogram.parsePdfFile(file);
+
+        if (el.aiExtractProgress) el.aiExtractProgress.style.display = 'none';
+
         if (res.success) {
-          if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = `${res.count} Products Indexed`;
-          if (el.catalogLabel) el.catalogLabel.textContent = `${file.name} (${res.count} items)`;
-          showToast(`PDF Cheatsheet Indexed: ${res.count} items`, 'success');
+          if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = `${res.count} Items Indexed & Rendered`;
+          db.saveLocalPlanogram(file.name, planogram.getAllItems());
+          showToast(`PDF Analyzed: ${res.count} items indexed fixture-by-fixture!`, 'success');
         } else {
-          showToast('Using active cheatsheet catalog', 'info');
+          showToast('Using active store cheatsheet catalog', 'info');
         }
-      });
+      } catch (err) {
+        console.error('PDF extraction failed:', err);
+        if (el.aiExtractProgress) el.aiExtractProgress.style.display = 'none';
+        showToast('PDF loaded (catalog ready)', 'info');
+      }
     }
 
     if (el.btnReplacePdf && el.pdfFileInput) {
@@ -365,7 +424,6 @@
 
         if (el.pdfNameLabel) el.pdfNameLabel.textContent = 'Store Cheatsheet (M6-M10 & MT2)';
         if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = '6 Pages • 62 Products Indexed';
-        if (el.catalogLabel) el.catalogLabel.textContent = 'M6-M10 & MT2 (62 items)';
         if (el.pdfFrame) {
           el.pdfFrame.style.display = 'none';
           el.pdfFrame.src = '';
@@ -375,7 +433,7 @@
       });
     }
 
-    // 9. Presets & Simulator Modal
+    // 10. Presets & Simulator Modal
     document.querySelectorAll('.preset-code-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const code = btn.getAttribute('data-code');
@@ -399,7 +457,7 @@
       });
     }
 
-    // 10. Photo / Image File Barcode Scan
+    // 11. Image Barcode Decoder
     if (el.imageUpload) {
       el.imageUpload.addEventListener('change', async (e) => {
         if (!e.target.files || e.target.files.length === 0) return;
@@ -437,7 +495,7 @@
       });
     }
 
-    // 11. Results Log List (Mobile Cards + Desktop Table)
+    // 12. Results Log List (Mobile Cards)
     function renderResultsList() {
       const filter = el.searchInput ? el.searchInput.value.trim().toLowerCase() : '';
       const filtered = state.results.filter(item => {
@@ -469,7 +527,7 @@
 
       if (el.tableEmptyState) el.tableEmptyState.style.display = 'none';
 
-      // 11A. Mobile Cards List
+      // Mobile Cards
       if (el.scansListContainer) {
         el.scansListContainer.innerHTML = filtered.map(item => `
           <div class="mobile-log-card" data-id="${item.id}">
@@ -493,7 +551,7 @@
         `).join('');
       }
 
-      // 11B. Desktop Table
+      // Desktop Table
       if (el.scansTbody) {
         el.scansTbody.innerHTML = filtered.map((item, idx) => `
           <tr data-id="${item.id}">
@@ -510,7 +568,7 @@
         `).join('');
       }
 
-      // Event Handlers for Copy & Delete
+      // Dynamic Action Listeners
       document.querySelectorAll('.copy-code-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           const c = btn.getAttribute('data-code');
@@ -532,19 +590,19 @@
     if (el.btnClearLog) {
       el.btnClearLog.addEventListener('click', () => {
         if (state.results.length === 0) return;
-        if (confirm('Clear all scanned entries?')) {
+        if (confirm('Clear all scanned records?')) {
           state.results = [];
           renderResultsList();
-          showToast('Scanned log cleared', 'info');
+          showToast('Log cleared', 'info');
         }
       });
     }
 
-    // CSV Export
+    // CSV & JSON Exports
     if (el.btnExportCsv) {
       el.btnExportCsv.addEventListener('click', () => {
         if (state.results.length === 0) return;
-        const headers = ['Index', 'Time', 'Format', 'Saved Code', 'Planogram Rack Location', 'Trim Digits'];
+        const headers = ['Index', 'Time', 'Format', 'Saved Code', 'Planogram Location', 'Trim Digits'];
         const rows = state.results.map((r, i) => [
           state.results.length - i,
           `"${r.timestamp}"`,
@@ -553,13 +611,12 @@
           `"${r.locationInfo.replace(/"/g, '""')}"`,
           r.trimmedN
         ]);
-        const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(row => row.join(','))].join('\r\n');
-        downloadFile(csvContent, `scan-dock-${Date.now()}.csv`, 'text/csv;charset=utf-8;');
+        const csv = '\uFEFF' + [headers.join(','), ...rows.map(row => row.join(','))].join('\r\n');
+        downloadFile(csv, `scan-dock-${Date.now()}.csv`, 'text/csv;charset=utf-8;');
         showToast('CSV export downloaded', 'success');
       });
     }
 
-    // JSON Export
     if (el.btnExportJson) {
       el.btnExportJson.addEventListener('click', () => {
         if (state.results.length === 0) return;
@@ -574,7 +631,7 @@
       });
     }
 
-    // 12. AI Assistant Drawer
+    // 13. AI Assistant Drawer
     if (el.btnOpenAi) el.btnOpenAi.addEventListener('click', () => el.aiDrawer.classList.add('open'));
     if (el.btnCloseAi) el.btnCloseAi.addEventListener('click', () => el.aiDrawer.classList.remove('open'));
 
@@ -615,23 +672,6 @@
       el.aiMessages.appendChild(msg);
       el.aiMessages.scrollTop = el.aiMessages.scrollHeight;
       return msg;
-    }
-
-    // 13. API Key Modal
-    if (el.btnAiSettings) {
-      el.btnAiSettings.addEventListener('click', () => {
-        if (el.apiKeyInput) el.apiKeyInput.value = ai.getApiKey();
-        if (el.apiKeyModal) el.apiKeyModal.classList.add('open');
-      });
-    }
-    if (el.btnCloseApiKey) el.btnCloseApiKey.addEventListener('click', () => el.apiKeyModal.classList.remove('open'));
-    if (el.btnSaveApiKey) {
-      el.btnSaveApiKey.addEventListener('click', () => {
-        const key = el.apiKeyInput.value.trim();
-        ai.setApiKey(key);
-        el.apiKeyModal.classList.remove('open');
-        showToast(key ? 'Gemini API Key saved' : 'Using local zero-latency engine', 'success');
-      });
     }
 
     // Initial render

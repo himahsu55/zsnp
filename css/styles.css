@@ -242,6 +242,66 @@ body::before {
   50% { opacity: 0.4; transform: scale(0.85); }
 }
 
+/* Quick API Key Status Strip */
+.api-key-quick-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  margin-top: 6px;
+}
+
+.key-status-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.key-indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+
+.key-indicator-dot.active {
+  background: var(--ok);
+  box-shadow: 0 0 6px var(--ok);
+}
+
+.key-status-text {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn-key-chip {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  color: var(--ink);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.btn-key-chip:active {
+  background: var(--ink);
+  color: #FFF;
+}
+
 /* ==========================================================================
    APP MAIN VIEWPORT & TAB SCREENS
    ========================================================================== */
@@ -805,6 +865,107 @@ body::before {
   font-size: 11px;
   color: #FFB5AF;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* 1. AI Placement Speech Box */
+.ai-speech-box {
+  background: rgba(26, 98, 198, 0.12);
+  border: 1px solid rgba(190, 216, 255, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-speech-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: #8EB7FF;
+  letter-spacing: 0.04em;
+}
+
+.ai-speech-content {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #E2ECFF;
+}
+
+.ai-speech-content strong {
+  color: #FFF;
+  font-weight: 700;
+}
+
+/* 2. Cropped Exact Physical Snippet from PDF */
+.pdf-cropped-section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pdf-cropped-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: #FFB5AF;
+  letter-spacing: 0.04em;
+}
+
+.pdf-cropped-visual-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #000;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  max-height: 240px;
+}
+
+.cropped-doc-image {
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: contain;
+  display: block;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+/* AI Extraction Progress in PDF Tab */
+.ai-extraction-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #EAF2FF;
+  border: 1px solid #BED8FF;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: #1A62C6;
+  font-weight: 600;
+}
+
+.progress-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid rgba(26, 98, 198, 0.25);
+  border-top-color: #1A62C6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ==========================================================================

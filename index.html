@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Scan Dock — Mobile Retail Planogram & Barcode Terminal</title>
-  <meta name="theme-color" content="#14171C">
+  <title>Scan Dock — AI PDF Cheatsheet & Barcode Terminal</title>
+  <meta name="theme-color" content="#101318">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   
@@ -14,7 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   
   <!-- External Libraries -->
-  <!-- PDF.js for Cheatsheet PDF Extraction -->
+  <!-- PDF.js for PDF Rendering & Text Extraction -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -22,7 +22,7 @@
     }
   </script>
   
-  <!-- ZXing MultiFormat Barcode Reader -->
+  <!-- ZXing MultiFormat Reader -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
   <!-- Mobile-First Stylesheet -->
@@ -31,7 +31,7 @@
 <body class="mobile-app-body">
 
   <!-- ========================================================================
-       MOBILE COMPACT APP HEADER
+       TOP APP BAR & API KEY STRIP
        ======================================================================== -->
   <header class="app-top-header">
     <div class="header-main-row">
@@ -39,52 +39,44 @@
         <div class="brand-logo-badge">SD</div>
         <div class="brand-text-wrap">
           <div class="brand-name">SCAN DOCK</div>
-          <div class="brand-sub">OFFICE TERMINAL v2.0</div>
+          <div class="brand-sub">AI PLANOGRAM TERMINAL</div>
         </div>
       </div>
 
-      <!-- Quick Action Icons -->
+      <!-- Quick Header Action Buttons -->
       <div class="header-action-icons">
-        <button type="button" class="icon-action-btn ai-trigger" id="btn-open-ai" title="AI Cheatsheet Assistant" aria-label="Open AI Assistant">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12A10 10 0 0 1 12 2z"></path><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
-          <span class="ai-glow-dot"></span>
+        <button type="button" class="icon-action-btn key-btn" id="btn-ai-settings" title="Gemini API Key" aria-label="API Key">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
         </button>
 
-        <button type="button" class="icon-action-btn" id="btn-ai-settings" title="Gemini API Key" aria-label="API Key Settings">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <button type="button" class="icon-action-btn ai-trigger" id="btn-open-ai" title="AI Chat Assistant" aria-label="Open AI Assistant">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12A10 10 0 0 1 12 2z"></path><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+          <span class="ai-glow-dot"></span>
         </button>
       </div>
     </div>
 
-    <!-- Live Status Strip -->
-    <div class="header-status-strip">
-      <div class="status-chip catalog-chip" id="chip-cheatsheet-status">
-        <span class="pulse-green-dot"></span>
-        <span class="chip-text" id="header-catalog-label">M6-M10 &amp; MT2 (62 items)</span>
+    <!-- Gemini Key & PDF Extraction Status Bar -->
+    <div class="api-key-quick-banner" id="api-key-banner">
+      <div class="key-status-left">
+        <span class="key-indicator-dot" id="key-dot"></span>
+        <span class="key-status-text" id="key-status-text">Gemini AI Key: Not Set (Using Local Engine)</span>
       </div>
-
-      <div class="status-chip scanner-chip" id="chip-scanner-status">
-        <span class="chip-dot" id="header-scanner-dot"></span>
-        <span class="chip-text" id="header-scanner-label">Scanner Standby</span>
-      </div>
-
-      <div class="status-chip trim-chip" id="chip-trim-status">
-        <span class="chip-text" id="header-trim-label">Trim: -0</span>
-      </div>
+      <button type="button" class="btn-key-chip" id="btn-banner-key-act">Enter Key</button>
     </div>
   </header>
 
   <!-- ========================================================================
-       MAIN APP CONTAINER (TABBED SCREENS)
+       MAIN APP VIEWPORT (SCROLLABLE TAB SCREENS)
        ======================================================================== -->
   <main class="app-main-viewport">
 
     <!-- ====================================================================
-         SCREEN 1: LIVE SCANNER (DEFAULT PRIMARY SCREEN)
+         SCREEN 1: SCANNER & INSTANT AI / CROPPED PDF RESULT (DEFAULT)
          ==================================================================== -->
     <section class="app-tab-screen active" id="tab-scanner" aria-label="Barcode Camera Scanner">
-      
-      <!-- Camera Viewport Box -->
+
+      <!-- Camera Viewport Card -->
       <div class="mobile-scanner-card">
         <div class="camera-viewport-shell">
           <div id="scanner-viewport"></div>
@@ -103,26 +95,26 @@
           <!-- Flash Confirmation -->
           <div class="scan-flash-overlay" id="scan-flash"></div>
 
-          <!-- Top HUD Badges Inside Viewfinder -->
+          <!-- Viewfinder Top HUD -->
           <div class="viewfinder-hud">
-            <span class="hud-pill" id="hud-cam-status">CAMERA OFF</span>
-            <span class="hud-pill engine-pill" id="hud-target-format">60 FPS HARDWARE</span>
+            <span class="hud-pill" id="hud-cam-status">CAM: OFF</span>
+            <span class="hud-pill engine-pill" id="hud-target-format">HARDWARE 60 FPS</span>
           </div>
 
-          <!-- Viewfinder Floating Quick Controls (Torch, Flip, Sound) -->
+          <!-- Floating Torch & Sound buttons -->
           <div class="viewfinder-floating-controls">
-            <button type="button" class="viewfinder-icon-btn" id="btn-toggle-torch" style="display: none;" title="Toggle Flashlight">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6h-2a2 2 0 0 0-2 2v2H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h8v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"></path><line x1="6" y1="12" x2="6" y2="12.01"></line></svg>
+            <button type="button" class="viewfinder-icon-btn" id="btn-toggle-torch" style="display: none;" title="Flashlight">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6h-2a2 2 0 0 0-2 2v2H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h8v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"></path></svg>
             </button>
-            <button type="button" class="viewfinder-icon-btn" id="btn-toggle-sound" title="Toggle Beep Sound">
+            <button type="button" class="viewfinder-icon-btn" id="btn-toggle-sound" title="Sound">
               <svg id="icon-sound" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
             </button>
           </div>
         </div>
 
-        <!-- Quick Controls Bar Below Viewfinder -->
+        <!-- Scanner Controls & Quick Trim -->
         <div class="scanner-action-dock">
-          <!-- Big Laser Start/Stop Button -->
+          <!-- Primary Scan Toggle Button -->
           <button type="button" class="btn-primary-laser" id="btn-toggle-scanner">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -131,43 +123,36 @@
             <span id="scanner-btn-label">START CAMERA SCANNER</span>
           </button>
 
-          <!-- Quick Trimmer Stepper Chip (Change Trim with 1 Tap on Scanner Screen) -->
+          <!-- On-Screen Trailing Trim Dial (Change with 1 tap right on camera view) -->
           <div class="quick-trim-stepper">
-            <span class="trim-stepper-title">Trailing Trim:</span>
+            <span class="trim-stepper-title">Trailing Digits to Cut:</span>
             <button type="button" class="btn-step-sm" id="btn-quick-trim-minus">&minus;</button>
             <span class="quick-trim-display" id="quick-trim-display">0 digits</span>
             <button type="button" class="btn-step-sm" id="btn-quick-trim-plus">&plus;</button>
           </div>
 
-          <!-- Camera Select & Auxiliary Actions -->
           <div class="aux-row">
-            <select id="camera-device-select" class="mobile-cam-select" aria-label="Select Camera Lens">
-              <option value="environment">Back / Rear Lens</option>
-              <option value="user">Front Lens</option>
+            <select id="camera-device-select" class="mobile-cam-select" aria-label="Camera Lens">
+              <option value="environment">Back / Rear Camera</option>
+              <option value="user">Front Webcam</option>
             </select>
 
-            <label class="btn-aux-chip" title="Upload barcode photo">
+            <label class="btn-aux-chip" title="Scan photo">
               <input type="file" id="barcode-image-upload" accept="image/*" style="display: none;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               Photo
             </label>
 
-            <button type="button" class="btn-aux-chip" id="btn-simulate-modal" title="Simulate Barcode">
+            <button type="button" class="btn-aux-chip" id="btn-simulate-modal">
               ⚡ Test Scan
             </button>
-          </div>
-
-          <!-- Handheld USB / Bluetooth Scanner Gun Indicator -->
-          <div class="scanner-gun-badge">
-            <span class="gun-dot"></span>
-            <span>Handheld Scanner Guns Active (Scan anytime)</span>
           </div>
         </div>
       </div>
 
-      <!-- Quick Cheatsheet Presets Horizontal Scroll (Test Immediately on Phone!) -->
+      <!-- Quick Test Sample Barcodes Carousel -->
       <div class="mobile-presets-shelf">
-        <div class="presets-shelf-title">Quick Test Barcodes:</div>
+        <div class="presets-shelf-title">Tap to Test Cheatsheet Codes:</div>
         <div class="presets-scroll-track">
           <button type="button" class="chip-sample-code preset-code-btn" data-code="301081626" data-format="CODE_128">
             <span class="chip-tag">M6 Pos 1</span>
@@ -196,22 +181,38 @@
         </div>
       </div>
 
-      <!-- INSTANT SCAN RESULT BOTTOM CARD (Slides up upon scan) -->
+      <!-- ==================================================================
+           MAGIC SCAN RESULT CARD (AI EXPLANATION + CROPPED PDF SNIPPET)
+           ================================================================== -->
       <div class="mobile-scan-result-card" id="location-hud">
+        
+        <!-- Header -->
         <div class="result-card-header">
           <div>
-            <div class="result-badge-label">📍 PLANOGRAM RACK FOUND</div>
+            <div class="result-badge-label">📍 PLANOGRAM LOCATION IDENTIFIED</div>
             <div class="result-section-name" id="hud-section-name">M6 DENIM</div>
           </div>
           <div class="result-pos-cluster">
             <span class="result-pos-pill" id="hud-pos-badge">POS #1</span>
-            <button type="button" class="btn-close-result" id="btn-close-hud" aria-label="Close result card">&times;</button>
+            <button type="button" class="btn-close-result" id="btn-close-hud" aria-label="Close">&times;</button>
           </div>
         </div>
 
+        <!-- 1. AI Placement Explanation Box -->
+        <div class="ai-speech-box">
+          <div class="ai-speech-header">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12A10 10 0 0 1 12 2z"></path></svg>
+            <span>GEMINI AI PLACEMENT ADVISOR</span>
+          </div>
+          <div class="ai-speech-content" id="ai-placement-text">
+            Place this in <strong>M6 DENIM</strong> at <strong>Position #1</strong> (Top hanging rail, 1st hanger on left). Signage is <strong>₹899</strong> and Color is <strong>WHITE</strong>. Instruction: Layer 1st piece of Option 1 with Option 3.
+          </div>
+        </div>
+
+        <!-- Key Specs Grid -->
         <div class="result-meta-grid">
           <div class="meta-item">
-            <span class="meta-label">Code</span>
+            <span class="meta-label">Product Code</span>
             <span class="meta-value" id="hud-code-val">301081626</span>
           </div>
           <div class="meta-item">
@@ -219,17 +220,26 @@
             <span class="meta-value price" id="hud-price-val">₹899</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Color</span>
+            <span class="meta-label">Color / Shade</span>
             <span class="meta-value" id="hud-color-val">WHITE</span>
           </div>
           <div class="meta-item">
-            <span class="meta-label">Type</span>
+            <span class="meta-label">Fixture Slot</span>
             <span class="meta-value" id="hud-slot-type">Hanger 1</span>
           </div>
         </div>
 
-        <div class="result-remarks-banner" id="hud-remarks-text">
-          LAYER 1ST PIECE OF OPTION 1 WITH OPTION 3.
+        <!-- 2. CROPPED EXACT SNIPPET FROM THE ORIGINAL PDF -->
+        <div class="pdf-cropped-section">
+          <div class="pdf-cropped-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line></svg>
+            <span>CROPPED DIRECTLY FROM CHEATSHEET PDF</span>
+          </div>
+
+          <div class="pdf-cropped-visual-wrap" id="pdf-cropped-img-wrap">
+            <!-- Rendered by PdfCropper as a high-DPI image cropped directly from the PDF page -->
+            <img id="cropped-product-img" class="cropped-doc-image" alt="Cropped PDF Snippet">
+          </div>
         </div>
 
         <!-- Mini Visual Rack Placement Diagram -->
@@ -239,13 +249,13 @@
     </section>
 
     <!-- ====================================================================
-         SCREEN 2: INTERACTIVE RACK MAP (VISUAL PLANOGRAM BROWSER)
+         SCREEN 2: INTERACTIVE RACK MAP
          ==================================================================== -->
     <section class="app-tab-screen" id="tab-rack" aria-label="Visual Rack Map">
       <div class="screen-card">
         <div class="screen-card-header">
           <h2 class="screen-title">Visual Rack Architecture</h2>
-          <span class="screen-badge">Interactive Map</span>
+          <span class="screen-badge">Cheatsheet Layout</span>
         </div>
 
         <!-- Section Selector Tabs -->
@@ -258,33 +268,31 @@
           <button type="button" class="btn-section-pill" data-section="MT2-BACK">MT2 BACK</button>
         </div>
 
-        <!-- Rack Search Box -->
         <div class="rack-search-bar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" id="rack-search-input" placeholder="Search product code or color on rack..." aria-label="Search on rack">
+          <input type="text" id="rack-search-input" placeholder="Search code or color on rack..." aria-label="Search">
         </div>
 
-        <!-- Dedicated Visual Rack Container -->
         <div class="full-rack-display-container" id="full-rack-display"></div>
       </div>
     </section>
 
     <!-- ====================================================================
-         SCREEN 3: PDF CHEATSHEET DOCK & VIEWER
+         SCREEN 3: CHEATSHEET PDF DOCK & UPLOAD
          ==================================================================== -->
     <section class="app-tab-screen" id="tab-pdf" aria-label="Cheatsheet PDF Dock">
       <div class="screen-card">
         <div class="screen-card-header">
           <h2 class="screen-title">Cheatsheet PDF Dock</h2>
-          <span class="screen-badge">Native Viewer</span>
+          <span class="screen-badge">AI Scanner Ready</span>
         </div>
 
-        <!-- Upload & Status Banner -->
+        <!-- Active PDF Info Banner -->
         <div class="pdf-mobile-meta-box">
           <div class="pdf-info-row">
             <div class="pdf-doc-badge">PDF</div>
             <div class="pdf-details">
-              <div class="pdf-name" id="pdf-name-label">Store Cheatsheet (M6, M8, M9, M10, MT2)</div>
+              <div class="pdf-name" id="pdf-name-label">Store Cheatsheet (M6-M10 &amp; MT2)</div>
               <div class="pdf-stats" id="pdf-size-label">6 Pages &bull; 62 Products Indexed</div>
             </div>
           </div>
@@ -303,21 +311,18 @@
           </div>
         </div>
 
-        <!-- Dropzone when no PDF is attached -->
-        <div class="dropzone-area" id="pdf-dropzone" style="display: none;">
-          <div class="dropzone-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-          </div>
-          <div class="dropzone-text">Tap to browse .pdf cheatsheet</div>
-          <div class="dropzone-subtext">Automatically extracted with PDF.js</div>
+        <!-- AI Extraction Progress Indicator -->
+        <div class="ai-extraction-progress" id="ai-extract-progress" style="display: none;">
+          <div class="progress-spinner"></div>
+          <span id="ai-extract-status-text">Gemini AI analyzing PDF fixture-by-fixture...</span>
         </div>
 
-        <!-- Mobile PDF Viewer Frame -->
+        <!-- Native PDF Viewer Frame -->
         <div class="mobile-pdf-viewport-frame">
           <div class="pdf-empty-placeholder" id="pdf-placeholder">
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
             <div style="font-weight: 600; color: #FFF; font-size: 13px;">Preloaded Cheatsheet Active</div>
-            <div style="font-size: 11.5px; opacity: 0.7;">Upload a PDF to view native inline pages</div>
+            <div style="font-size: 11.5px; opacity: 0.7;">Upload a custom PDF to scan new store fixtures</div>
           </div>
           <iframe id="pdf-frame" class="pdf-iframe" title="PDF Document Viewer"></iframe>
         </div>
@@ -325,23 +330,22 @@
     </section>
 
     <!-- ====================================================================
-         SCREEN 4: DIGIT TRIM RULE DIAL
+         SCREEN 4: DIGIT TRIM RULE
          ==================================================================== -->
     <section class="app-tab-screen" id="tab-trim" aria-label="Digit Trim Rule">
       <div class="screen-card">
         <div class="screen-card-header">
           <h2 class="screen-title">Digit Trim Rule</h2>
-          <span class="screen-badge">Number Dial</span>
+          <span class="screen-badge">Trailing Truncator</span>
         </div>
 
         <p class="screen-desc">
-          Automatically strip trailing size or batch check digits ($N$) to extract exact 9-digit garment codes.
+          Exclude extra trailing size or batch check digits from scanned barcodes to match 9-digit cheatsheet codes.
         </p>
 
-        <!-- Stepper Dial -->
         <div class="trim-dial-card">
           <div class="dial-top-label">
-            <span>Trailing Digits to Cut</span>
+            <span>Trailing Digits to Exclude</span>
             <span class="dial-count-tag" id="trim-val-text">0 of 12</span>
           </div>
 
@@ -364,7 +368,6 @@
           </div>
         </div>
 
-        <!-- Live Visual Preview -->
         <div class="preview-box">
           <div class="preview-header">
             <span>Live Strikethrough Preview</span>
@@ -389,7 +392,7 @@
     <!-- ====================================================================
          SCREEN 5: SCANNED LOG & EXPORTS
          ==================================================================== -->
-    <section class="app-tab-screen" id="tab-log" aria-label="Scanned Results Log">
+    <section class="app-tab-screen" id="tab-log" aria-label="Scanned Log">
       <div class="screen-card">
         <div class="screen-card-header">
           <div style="display: flex; align-items: center; gap: 8px;">
@@ -399,28 +402,17 @@
           <button type="button" class="btn-clear-action" id="btn-clear-log" disabled>Clear All</button>
         </div>
 
-        <!-- Search & Export Controls -->
         <div class="log-controls-cluster">
-          <input type="search" class="log-search-input" id="search-results-input" placeholder="Filter scanned codes or racks..." aria-label="Search scanned log">
+          <input type="search" class="log-search-input" id="search-results-input" placeholder="Search codes, fixtures, or prices..." aria-label="Search">
 
           <div class="log-export-btn-group">
-            <button type="button" class="btn-export-mobile" id="btn-export-csv" disabled>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              Export CSV
-            </button>
-            <button type="button" class="btn-export-mobile" id="btn-export-json" disabled>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-              Export JSON
-            </button>
+            <button type="button" class="btn-export-mobile" id="btn-export-csv" disabled>Export CSV</button>
+            <button type="button" class="btn-export-mobile" id="btn-export-json" disabled>Export JSON</button>
           </div>
         </div>
 
-        <!-- Scanned Items List (Mobile-Optimized Cards) -->
-        <div class="mobile-log-list" id="scans-list-container">
-          <!-- Populated dynamically as cards -->
-        </div>
+        <div class="mobile-log-list" id="scans-list-container"></div>
 
-        <!-- Desktop Table Fallback (for large screens) -->
         <div class="desktop-table-shell">
           <table class="results-table" id="scans-table">
             <thead>
@@ -438,11 +430,10 @@
           </table>
         </div>
 
-        <!-- Empty State -->
         <div class="empty-table-state" id="table-empty-state">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="8" x2="6" y2="16"></line><line x1="10" y1="8" x2="10" y2="16"></line></svg>
           <div style="font-weight: 600; color: var(--ink);">No barcodes scanned yet</div>
-          <div style="font-size: 12px; color: var(--muted);">Switch to Scanner tab to scan product barcodes</div>
+          <div style="font-size: 12px; color: var(--muted);">Switch to Scanner to scan garments</div>
         </div>
       </div>
     </section>
@@ -450,7 +441,7 @@
   </main>
 
   <!-- ========================================================================
-       MOBILE STICKY BOTTOM NAVIGATION BAR
+       BOTTOM NAVIGATION BAR
        ======================================================================== -->
   <nav class="mobile-bottom-nav" aria-label="Bottom Navigation">
     <button type="button" class="nav-tab-btn active" data-tab="tab-scanner">
@@ -491,13 +482,13 @@
   </nav>
 
   <!-- ========================================================================
-       AI ASSISTANT DRAWER (MOBILE BOTTOM/SIDE SHEET)
+       AI ASSISTANT DRAWER
        ======================================================================== -->
   <aside class="ai-drawer" id="ai-drawer" aria-label="AI Planogram Assistant">
     <div class="ai-drawer-header">
       <div class="ai-drawer-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12A10 10 0 0 1 12 2z"></path></svg>
-        AI Cheatsheet Assistant
+        AI Planogram Assistant
       </div>
       <button type="button" class="btn-row-action" id="btn-close-ai" aria-label="Close AI">&times;</button>
     </div>
@@ -531,23 +522,23 @@
         <button type="button" class="btn-row-action" id="btn-close-apikey">&times;</button>
       </div>
       <p style="font-size: 13px; color: var(--muted);">
-        Enter your Google Gemini API key for conversational AI. Free key from 
+        Enter your Google Gemini API key to enable full AI reasoning. Get a free API key at 
         <a href="https://aistudio.google.com/" target="_blank" rel="noopener" style="color: #1A62C6; font-weight: 600;">Google AI Studio</a>.
       </p>
       <div style="display: flex; flex-direction: column; gap: 6px;">
-        <label for="gemini-key-input" style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--muted);">API Key</label>
+        <label for="gemini-key-input" style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--muted);">Gemini API Key</label>
         <input type="password" id="gemini-key-input" class="preview-custom-input" placeholder="AIzaSy...">
       </div>
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
         <button type="button" class="btn-primary-laser" id="btn-save-apikey" style="flex: 0 0 auto; height: 38px; padding: 0 16px;">
-          Save Key
+          Save API Key
         </button>
       </div>
     </div>
   </div>
 
   <!-- ========================================================================
-       MODAL: SIMULATE BARCODE SCAN (TESTING & MANUAL ENTRY)
+       MODAL: SIMULATE BARCODE SCAN
        ======================================================================== -->
   <div class="dialog-backdrop" id="simulate-dialog">
     <div class="dialog-card">
@@ -587,8 +578,10 @@
 
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- Scripts -->
+  <!-- Application Modules -->
   <script src="sample-data/cheatsheet-data.js"></script>
+  <script src="js/pdf-cropper.js"></script>
+  <script src="js/db-sync.js"></script>
   <script src="js/trimmer.js"></script>
   <script src="js/scanner.js"></script>
   <script src="js/planogram.js"></script>
