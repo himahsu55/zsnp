@@ -82,7 +82,6 @@
          SCREEN 1: SCANNER & INSTANT AI / CROPPED PDF RESULT (DEFAULT)
          ==================================================================== -->
     <section class="app-tab-screen active" id="tab-scanner" aria-label="Barcode Camera Scanner">
-
       <!-- Camera Viewport Card -->
       <div class="mobile-scanner-card">
         <div class="camera-viewport-shell">
@@ -95,61 +94,111 @@
               <div class="corner tr"></div>
               <div class="corner bl"></div>
               <div class="corner br"></div>
-              <div class="reticle-laser-line"></div>
+              <div class="laser-scanline" id="laser-line"></div>
             </div>
             <div class="reticle-guide-text">Align barcode inside frame</div>
           </div>
 
-          <!-- Camera Controls Floating Overlay -->
-          <div class="camera-floating-controls">
-            <button type="button" class="cam-float-btn" id="btn-torch" title="Flashlight" aria-label="Toggle flashlight">
+          <!-- Flash Confirmation -->
+          <div class="scan-flash-overlay" id="scan-flash"></div>
+
+          <!-- Viewfinder Top HUD -->
+          <div class="viewfinder-hud">
+            <span class="hud-pill" id="hud-cam-status">CAM: READY</span>
+            <span class="hud-pill engine-pill" id="hud-target-format">DUAL HYBRID 60 FPS</span>
+          </div>
+
+          <!-- Floating Torch & Sound buttons -->
+          <div class="viewfinder-floating-controls">
+            <button type="button" class="viewfinder-icon-btn" id="btn-toggle-torch" title="Toggle Flashlight" aria-label="Toggle Flashlight">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
             </button>
-            <button type="button" class="cam-float-btn" id="btn-flip-cam" title="Switch Camera" aria-label="Switch camera">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            <button type="button" class="viewfinder-icon-btn" id="btn-toggle-sound" title="Toggle Audio Beep" aria-label="Toggle Audio">
+              <svg id="icon-sound" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
             </button>
-            <button type="button" class="cam-float-btn" id="btn-photo-scan" title="Scan Image/Photo" aria-label="Scan from photo">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-            </button>
-            <input type="file" id="file-photo-scan" accept="image/*" style="display: none;">
           </div>
         </div>
 
-        <!-- Scanner Footer Status & Simulation Chips -->
-        <div class="scanner-card-footer">
-          <div class="scanner-status-indicator">
-            <span class="live-dot-beacon"></span>
-            <span id="scanner-live-label" style="color: var(--text);">Camera Active &bull; Continuous Autofocus</span>
+        <!-- Scanner Controls & Quick Trim -->
+        <div class="scanner-action-dock">
+          <!-- Primary Scan Toggle Button -->
+          <button type="button" class="btn-primary-laser" id="btn-toggle-scanner">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            <span id="scanner-btn-label">START CAMERA SCANNER</span>
+          </button>
+
+          <!-- On-Screen Trailing Trim Dial (Change with 1 tap right on camera view) -->
+          <div class="quick-trim-stepper">
+            <span class="trim-stepper-title">Trailing Digits to Cut:</span>
+            <button type="button" class="btn-step-sm" id="btn-quick-trim-minus">&minus;</button>
+            <span class="quick-trim-display" id="quick-trim-display">0 digits</span>
+            <button type="button" class="btn-step-sm" id="btn-quick-trim-plus">&plus;</button>
           </div>
 
-          <!-- Quick Test Barcodes Bar -->
-          <div class="quick-preset-bar">
-            <span class="quick-preset-title">Cheatsheet Barcodes:</span>
-            <button type="button" class="chip-sample-code preset-code-btn" data-code="301079824" data-format="CODE_128">
-              <span class="chip-tag">M8 Pos 33</span>
-              <span class="chip-num">301079824</span>
-            </button>
-            <button type="button" class="chip-sample-code preset-code-btn" data-code="301081626" data-format="CODE_128">
-              <span class="chip-tag">M6 Pos 1</span>
-              <span class="chip-num">301081626</span>
-            </button>
-            <button type="button" class="chip-sample-code preset-code-btn" data-code="301078439" data-format="CODE_128">
-              <span class="chip-tag">M6 Pos 7</span>
-              <span class="chip-num">301078439</span>
-            </button>
-            <button type="button" class="chip-sample-code preset-code-btn" data-code="301081946" data-format="CODE_128">
-              <span class="chip-tag">M8 Pos 23</span>
-              <span class="chip-num">301081946</span>
-            </button>
-            <button type="button" class="chip-sample-code preset-code-btn" data-code="301080548" data-format="CODE_128">
-              <span class="chip-tag">M9 Pos 1</span>
-              <span class="chip-num">301080548</span>
-            </button>
-            <button type="button" class="chip-sample-code preset-code-btn" data-code="301057130" data-format="CODE_128">
-              <span class="chip-tag">M10 Pos 1</span>
-              <span class="chip-num">301057130</span>
+          <div class="aux-row">
+            <select id="camera-device-select" class="mobile-cam-select" aria-label="Camera Lens">
+              <option value="environment">Back / Rear Camera</option>
+              <option value="user">Front Webcam</option>
+            </select>
+
+            <label class="btn-aux-chip" title="Scan photo">
+              <input type="file" id="barcode-image-upload" accept="image/*" style="display: none;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Photo
+            </label>
+
+            <button type="button" class="btn-aux-chip" id="btn-simulate-modal">
+              ⚡ Test Scan
             </button>
           </div>
+
+          <!-- Hardware scanner gun active indicator -->
+          <div class="scanner-gun-badge">
+            <span class="gun-dot"></span>
+            <span>Hardware Laser Gun / Bluetooth Wedge Active (Instant)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Test Sample Barcodes Carousel -->
+      <div class="mobile-presets-shelf">
+        <div class="presets-shelf-title">Tap to Test Cheatsheet Codes:</div>
+        <div class="presets-scroll-track">
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301079824" data-format="CODE_128">
+            <span class="chip-tag">M8 Pos 33 (New Line)</span>
+            <span class="chip-num">301079824</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081626" data-format="CODE_128">
+            <span class="chip-tag">M6 Pos 1</span>
+            <span class="chip-num">301081626</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301075847" data-format="CODE_128">
+            <span class="chip-tag">M6 Pos 2</span>
+            <span class="chip-num">301075847</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081624" data-format="CODE_128">
+            <span class="chip-tag">M6 Pos 3</span>
+            <span class="chip-num">301081624</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301078439" data-format="CODE_128">
+            <span class="chip-tag">M6 Pos 7</span>
+            <span class="chip-num">301078439</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081946" data-format="CODE_128">
+            <span class="chip-tag">M8 Pos 23 (New Line)</span>
+            <span class="chip-num">301081946</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301080548" data-format="CODE_128">
+            <span class="chip-tag">M9 Pos 1</span>
+            <span class="chip-num">301080548</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301057130" data-format="CODE_128">
+            <span class="chip-tag">M10 Pos 1</span>
+            <span class="chip-num">301057130</span>
+          </button>
         </div>
       </div>
 

@@ -88,6 +88,8 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  max-width: 860px;
+  margin: 0 auto;
 }
 
 .brand-cluster {
@@ -253,6 +255,9 @@ body::before {
   border-radius: var(--radius-sm);
   padding: 4px 8px;
   margin-top: 6px;
+  max-width: 860px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .key-status-left {
@@ -317,6 +322,9 @@ body::before {
   display: none;
   flex-direction: column;
   gap: 14px;
+  max-width: 860px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .app-tab-screen.active {
@@ -1915,8 +1923,10 @@ body::before {
 .mobile-bottom-nav {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 860px;
+  width: 100%;
   height: calc(var(--bottom-nav-height) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
   background: rgba(16, 19, 24, 0.94);
@@ -1927,6 +1937,7 @@ body::before {
   justify-content: space-around;
   align-items: center;
   z-index: 100;
+  border-radius: 16px 16px 0 0;
 }
 
 .nav-tab-btn {
