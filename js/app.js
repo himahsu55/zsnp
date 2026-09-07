@@ -15,6 +15,8 @@
     },
     activeSection: 'M6 DENIM',
     activeTab: 'tab-scanner',
+    newlinesFilter: 'ALL',
+    newlinesSearch: '',
     results: []
   };
 
@@ -46,10 +48,25 @@
       apiKeyInput: document.getElementById('gemini-key-input'),
       btnSaveApiKey: document.getElementById('btn-save-apikey'),
 
+      // Header Quick New Lines Pill
+      btnQuickNewlines: document.getElementById('btn-quick-newlines'),
+      hdrNewlinesCount: document.getElementById('hdr-newlines-count'),
+
       // Navigation Tabs
       navTabs: document.querySelectorAll('.nav-tab-btn'),
       tabScreens: document.querySelectorAll('.app-tab-screen'),
       navLogCount: document.getElementById('nav-log-count'),
+      navBtnNewlines: document.getElementById('nav-btn-newlines'),
+      navNewlinesCount: document.getElementById('nav-newlines-count'),
+
+      // Fresh New Lines Tab Elements
+      screenNewlinesBadge: document.getElementById('screen-newlines-badge'),
+      metricNewlinesTotal: document.getElementById('metric-newlines-total'),
+      metricSectionsCount: document.getElementById('metric-sections-count'),
+      metricTopSection: document.getElementById('metric-top-section'),
+      newlinesSectionFilter: document.getElementById('newlines-section-filter'),
+      newlinesSearchInput: document.getElementById('newlines-search-input'),
+      newlinesCatalogGrid: document.getElementById('newlines-catalog-grid'),
 
       // Scanner Viewport & Quick Controls
       quickTrimDisplay: document.getElementById('quick-trim-display'),
@@ -73,12 +90,19 @@
       hudPriceVal: document.getElementById('hud-price-val'),
       hudColorVal: document.getElementById('hud-color-val'),
       hudSlotType: document.getElementById('hud-slot-type'),
+      hudNewlineBadge: document.getElementById('hud-newline-badge'),
+      hudNewlineMetaItem: document.getElementById('hud-newline-meta-item'),
+      hudNewlineVal: document.getElementById('hud-newline-val'),
       hudLabelSecond: document.getElementById('hud-label-second'),
       hudLabelThird: document.getElementById('hud-label-third'),
       hudLabelFourth: document.getElementById('hud-label-fourth'),
       aiPlacementText: document.getElementById('ai-placement-text'),
       croppedProductImg: document.getElementById('cropped-product-img'),
       hudCroppedHeaderTitle: document.getElementById('pdf-cropped-header-label') || document.getElementById('hud-cropped-header-title'),
+      croppedFixtureImg: document.getElementById('cropped-fixture-img'),
+      hudBeaconPoint: document.getElementById('hud-beacon-point'),
+      hudBeaconBadge: document.getElementById('hud-beacon-badge'),
+      hudFloorSlotTitle: document.getElementById('hud-floor-slot-title'),
       hudVisualRackWrap: document.getElementById('hud-visual-rack-wrap'),
       btnCloseHud: document.getElementById('btn-close-hud'),
       hudNotFoundActions: document.getElementById('hud-not-found-actions'),
@@ -193,12 +217,18 @@
 
       if (targetTabId === 'tab-rack') {
         renderFullRackView(state.activeSection);
+      } else if (targetTabId === 'tab-newlines') {
+        renderNewLinesScreen();
       }
     }
 
     el.navTabs.forEach(btn => {
       btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
     });
+
+    if (el.btnQuickNewlines) {
+      el.btnQuickNewlines.addEventListener('click', () => switchTab('tab-newlines'));
+    }
 
     // 5. Quick Trimmer on Scanner Screen
     function updateQuickTrimDisplay() {
@@ -288,12 +318,28 @@
       if (el.hudLabelFourth) el.hudLabelFourth.textContent = 'Fixture Slot';
       if (el.hudSlotType) el.hudSlotType.textContent = product.slotType || 'Hanger/Shelf';
 
+      // NEW LINE Status & Glowing Badge
+      const isNewLine = (product.newLine || '').toUpperCase() === 'YES';
+      if (el.hudNewlineBadge) {
+        if (isNewLine) {
+          el.hudNewlineBadge.className = 'badge-new-line pulse-glow';
+          el.hudNewlineBadge.innerHTML = '🔥 NEW LINE: YES';
+        } else {
+          el.hudNewlineBadge.className = 'badge-repeat-line';
+          el.hudNewlineBadge.innerHTML = '📦 REPEAT LINE: NO';
+        }
+      }
+      if (el.hudNewlineVal) {
+        el.hudNewlineVal.textContent = isNewLine ? '🔥 YES (Fresh Launch)' : '📦 NO (Repeat / Carryover)';
+        el.hudNewlineVal.style.color = isNewLine ? '#FF8A00' : '#8A99AD';
+      }
+
       // Check if real PDF is loaded into viewer/cropper
       const hasRealDoc = Boolean(state.pdf && state.pdf.file) || (cropper.getPageCount() > 0 && Boolean(cropper.currentPdfDoc));
       if (el.hudCroppedHeaderTitle) {
         el.hudCroppedHeaderTitle.textContent = hasRealDoc
-          ? 'CROPPED DIRECTLY FROM CHEATSHEET PDF'
-          : 'AI PLACEMENT CARD — UPLOAD REAL PDF FOR EXACT PHOTO';
+          ? 'CROPPED FROM PDF'
+          : 'AI TILE';
       }
 
       // Hide troubleshooting actions
@@ -310,21 +356,17 @@
             console.warn('ai.explainPlacement failed:', err);
             el.aiPlacementText.innerHTML =
               `📍 <strong>Placement:</strong> Hang/Place in <strong>${escapeHtml(product.section)}</strong> at <strong>Position #${escapeHtml(String(product.position))}</strong>.<br>` +
-              `• <strong>Product:</strong> ${escapeHtml(product.color)} | <strong>Signage:</strong> ₹${escapeHtml(String(product.signage))}<br>` +
+              `• <strong>Product:</strong> ${escapeHtml(product.color)} | <strong>Signage:</strong> ₹${escapeHtml(String(product.signage))} | <strong>New Line:</strong> ${escapeHtml(product.newLine || 'NO')}<br>` +
               (product.remarks ? `• <strong>Rule:</strong> <em>${escapeHtml(product.remarks)}</em>` : '');
           });
       }
 
-      // 7A-2. Crop Exact Physical Snippet from PDF Canvas (with guaranteed fallback card)
+      // 7A-2. Crop Exact Garment Snippet from PDF Canvas (with guaranteed fallback card)
       if (el.croppedProductImg) {
         el.croppedProductImg.alt = `Cropped PDF Snippet: ${product.code}`;
         cropper.cropProductSnippet(product)
           .then(dataUrl => {
-            if (dataUrl) {
-              el.croppedProductImg.src = dataUrl;
-            } else {
-              el.croppedProductImg.src = cropper.generateFallbackSnippet(product);
-            }
+            el.croppedProductImg.src = dataUrl || cropper.generateFallbackSnippet(product);
           })
           .catch(err => {
             console.warn('cropper.cropProductSnippet failed:', err);
@@ -332,7 +374,39 @@
           });
       }
 
-      // 7A-3. Mini Rack Visualizer
+      // 7A-3. Crop Floor / Fixture Diagram & Activate Animated Radar Beacon ("Ye Yahan Pe Lagega")
+      const pageNum = product.page || 1;
+      if (el.croppedFixtureImg) {
+        el.croppedFixtureImg.alt = `Floor Fixture Diagram: Page ${pageNum}`;
+        cropper.cropFixtureSnippet(pageNum)
+          .then(dataUrl => {
+            el.croppedFixtureImg.src = dataUrl || cropper.generateFallbackFixtureSnippet(pageNum);
+          })
+          .catch(err => {
+            console.warn('cropper.cropFixtureSnippet failed:', err);
+            el.croppedFixtureImg.src = cropper.generateFallbackFixtureSnippet(pageNum);
+          });
+      }
+
+      // Position Animated Radar Beacon
+      if (el.hudBeaconPoint) {
+        const coords = planogram.getFixtureBeaconCoordinates 
+          ? planogram.getFixtureBeaconCoordinates(product)
+          : { xPct: 50, yPct: 45 };
+        
+        el.hudBeaconPoint.style.left = `${coords.xPct}%`;
+        el.hudBeaconPoint.style.top = `${coords.yPct}%`;
+        el.hudBeaconPoint.style.display = 'flex';
+
+        if (el.hudBeaconBadge) {
+          el.hudBeaconBadge.textContent = `📍 YE YAHAN PE LAGEGA • SLOT #${product.position}`;
+        }
+        if (el.hudFloorSlotTitle) {
+          el.hudFloorSlotTitle.textContent = `📍 SLOT #${product.position} (${product.slotType || 'Slot'})`;
+        }
+      }
+
+      // 7A-4. Mini Rack Architecture Visualizer (with animated target slot blinking)
       if (el.hudVisualRackWrap) {
         el.hudVisualRackWrap.innerHTML = planogram.renderRackVisualizer(product);
       }
@@ -372,6 +446,15 @@
       if (el.hudLabelFourth) el.hudLabelFourth.textContent = 'ACTIVE DOCUMENT';
       if (el.hudSlotType) el.hudSlotType.textContent = (state.pdf.name || 'Store Cheatsheet').slice(0, 16);
 
+      if (el.hudNewlineBadge) {
+        el.hudNewlineBadge.className = 'badge-repeat-line';
+        el.hudNewlineBadge.innerHTML = 'NOT IN CHEATSHEET';
+      }
+      if (el.hudNewlineVal) {
+        el.hudNewlineVal.textContent = 'N/A';
+        el.hudNewlineVal.style.color = '#8A99AD';
+      }
+
       // AI Diagnostic Explanation (with resilient fallback)
       if (el.aiPlacementText) {
         el.aiPlacementText.textContent = 'Gemini AI diagnosing scanned barcode...';
@@ -394,6 +477,16 @@
       }
       if (el.hudCroppedHeaderTitle) {
         el.hudCroppedHeaderTitle.textContent = 'DOCUMENT SCAN DIAGNOSTIC';
+      }
+
+      if (el.croppedFixtureImg) {
+        el.croppedFixtureImg.src = cropper.generateFallbackFixtureSnippet ? cropper.generateFallbackFixtureSnippet(1) : '';
+      }
+      if (el.hudBeaconPoint) {
+        el.hudBeaconPoint.style.display = 'none';
+      }
+      if (el.hudFloorSlotTitle) {
+        el.hudFloorSlotTitle.textContent = 'NO ALLOCATED FIXTURE SLOT';
       }
 
       // Informative Rack Fallback
@@ -428,6 +521,155 @@
     if (el.btnHudUploadPdf) {
       el.btnHudUploadPdf.addEventListener('click', () => switchTab('tab-pdf'));
     }
+
+    // 8. Fresh New Lines Tab & Section Controller
+    function updateNewLinesCounters() {
+      const totalNewLines = planogram.getNewLinesCount ? planogram.getNewLinesCount() : 0;
+      if (el.hdrNewlinesCount) el.hdrNewlinesCount.textContent = totalNewLines;
+      if (el.navNewlinesCount) {
+        el.navNewlinesCount.textContent = totalNewLines;
+        el.navNewlinesCount.style.display = totalNewLines > 0 ? 'inline-block' : 'none';
+      }
+      if (el.screenNewlinesBadge) el.screenNewlinesBadge.textContent = `${totalNewLines} New Lines`;
+      if (el.metricNewlinesTotal) el.metricNewlinesTotal.textContent = totalNewLines;
+
+      const bySection = planogram.getNewLinesBySection ? planogram.getNewLinesBySection() : {};
+      const activeSections = Object.keys(bySection).filter(s => bySection[s].length > 0);
+      if (el.metricSectionsCount) el.metricSectionsCount.textContent = activeSections.length;
+
+      let topSec = 'None';
+      let maxLen = 0;
+      activeSections.forEach(s => {
+        if (bySection[s].length > maxLen) {
+          maxLen = bySection[s].length;
+          topSec = s;
+        }
+      });
+      if (el.metricTopSection) {
+        el.metricTopSection.textContent = maxLen > 0 ? `${topSec.replace(' DENIM', '').replace(' ESSENTIALS', '')} (${maxLen})` : 'None';
+      }
+    }
+
+    function renderNewLinesScreen() {
+      updateNewLinesCounters();
+      if (!el.newlinesCatalogGrid) return;
+
+      const allNewLines = planogram.getAllNewLines ? planogram.getAllNewLines() : [];
+      const filterSec = state.newlinesFilter || 'ALL';
+      const search = (state.newlinesSearch || '').toLowerCase().trim();
+
+      let filtered = allNewLines;
+      if (filterSec !== 'ALL') {
+        filtered = filtered.filter(item => item.section === filterSec);
+      }
+      if (search) {
+        filtered = filtered.filter(item => 
+          item.code.toLowerCase().includes(search) ||
+          item.color.toLowerCase().includes(search) ||
+          String(item.signage).includes(search) ||
+          (item.slotType && item.slotType.toLowerCase().includes(search)) ||
+          item.section.toLowerCase().includes(search)
+        );
+      }
+
+      if (filtered.length === 0) {
+        el.newlinesCatalogGrid.innerHTML = `
+          <div class="empty-table-state" style="grid-column: 1 / -1; padding: 40px 20px;">
+            <div style="font-size: 28px; margin-bottom: 8px;">🔍</div>
+            <div style="font-weight: 600; color: var(--ink);">No New Line products found</div>
+            <div style="font-size: 12px; color: var(--muted); margin-top: 4px;">Try changing the section filter or search term.</div>
+          </div>
+        `;
+        return;
+      }
+
+      el.newlinesCatalogGrid.innerHTML = filtered.map(item => {
+        return `
+          <div class="newline-card" data-code="${escapeHtml(item.code)}">
+            <div class="newline-card-header">
+              <span class="newline-card-pos">POS #${item.position}</span>
+              <span class="badge-new-line" style="font-size: 9px; padding: 2px 7px;">🔥 NEW LINE</span>
+            </div>
+            <div class="newline-thumb-wrap">
+              <img class="newline-thumb-img" id="thumb-${item.code}" alt="${escapeHtml(item.color)}" src="${cropper.generateFallbackSnippet(item)}">
+            </div>
+            <div class="newline-card-body">
+              <div class="newline-card-code">${escapeHtml(item.code)}</div>
+              <div class="newline-card-color">${escapeHtml(item.color)}</div>
+              <div class="newline-card-specs">
+                <span class="newline-spec-price">₹${item.signage}</span>
+                <span class="newline-spec-section">${escapeHtml(item.section)}</span>
+              </div>
+              <div class="newline-card-slot">
+                📍 <strong>Slot:</strong> ${escapeHtml(item.slotType || 'Hanger/Shelf')}
+              </div>
+              ${item.remarks ? `<div class="newline-card-remarks">${escapeHtml(item.remarks)}</div>` : ''}
+              <div class="newline-card-actions">
+                <button type="button" class="btn-newline-action btn-locate-floor" data-code="${escapeHtml(item.code)}">
+                  📍 Locate on Floor & Blink
+                </button>
+                <button type="button" class="btn-newline-action btn-sim-scan" data-code="${escapeHtml(item.code)}">
+                  ⚡ Simulate Scan
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Async load real cropped garment snippet for each card thumbnail
+      filtered.forEach(item => {
+        const thumbImg = document.getElementById(`thumb-${item.code}`);
+        if (thumbImg) {
+          cropper.cropProductSnippet(item).then(url => {
+            if (url) thumbImg.src = url;
+          }).catch(() => {});
+        }
+      });
+
+      // Attach button events
+      el.newlinesCatalogGrid.querySelectorAll('.btn-locate-floor').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const code = btn.getAttribute('data-code');
+          const prod = planogram.lookup(code);
+          if (prod) {
+            state.activeSection = prod.section;
+            await displayLocationResult(prod, prod.code);
+            showToast(`Blinking floor fixture for Slot #${prod.position}`, 'success');
+          }
+        });
+      });
+
+      el.newlinesCatalogGrid.querySelectorAll('.btn-sim-scan').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const code = btn.getAttribute('data-code');
+          handleScanEvent(code, 'CODE_128');
+        });
+      });
+    }
+
+    // New Lines Section Filter Listeners
+    if (el.newlinesSectionFilter) {
+      el.newlinesSectionFilter.querySelectorAll('.btn-section-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          el.newlinesSectionFilter.querySelectorAll('.btn-section-pill').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          state.newlinesFilter = btn.getAttribute('data-filter');
+          renderNewLinesScreen();
+        });
+      });
+    }
+
+    // New Lines Search Input
+    if (el.newlinesSearchInput) {
+      el.newlinesSearchInput.addEventListener('input', (e) => {
+        state.newlinesSearch = e.target.value;
+        renderNewLinesScreen();
+      });
+    }
+
+    // Initialize New Lines counters on boot
+    updateNewLinesCounters();
 
     // 8. Visual Rack Map Tab Renderer
     function renderFullRackView(sectionName, searchFilter = '') {
@@ -732,6 +974,7 @@
             });
             if (visionItems && visionItems.length > 0) {
               planogram.setItems(visionItems, file.name);
+              updateNewLinesCounters();
               if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = `1 Slide • ${visionItems.length} Products Indexed by AI`;
               showToast(`Slide Analyzed: ${visionItems.length} items extracted by Gemini Vision!`, 'success');
             } else {
@@ -758,6 +1001,7 @@
             el.pdfSizeLabel.textContent = `${cropper.getPageCount()} Pages • ${res.count} Products Indexed & Active`;
           }
           db.saveLocalPlanogram(file.name, planogram.getAllItems());
+          updateNewLinesCounters();
           showToast(`PDF Analyzed: ${res.count} products indexed and active!`, 'success');
 
           // If Gemini API Key is available and document had pages with subset/scanned text, enrich with Vision
@@ -767,6 +1011,7 @@
                 const added = planogram.addItems(visionItems);
                 if (added > 0) {
                   db.saveLocalPlanogram(file.name, planogram.getAllItems());
+                  updateNewLinesCounters();
                   if (el.pdfSizeLabel) {
                     el.pdfSizeLabel.textContent = `${cropper.getPageCount()} Pages • ${planogram.getTotalCount()} Products Indexed & Active`;
                   }
@@ -799,6 +1044,7 @@
         state.pdf.blobUrl = null;
 
         planogram.resetToDefault();
+        updateNewLinesCounters();
 
         if (el.pdfNameLabel) el.pdfNameLabel.textContent = 'Store Cheatsheet (M6-M10 & MT2)';
         if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = '6 Pages • 56 Products Indexed';

@@ -264,67 +264,220 @@
 
     /**
      * Render the interactive Visual Rack Diagram HTML for a found product
+     * Maps the EXACT slot numbers of the section (#23-36 for M8, #1-14 for M6, etc.)
      */
     renderRackVisualizer(product) {
       if (!product) return '';
 
-      const sectionItems = this.items.filter(it => it.section === product.section);
-      const totalPos = product.totalPositions || Math.max(14, sectionItems.length);
-      const activePos = product.position || 1;
+      const activeSection = product.section || 'M6 DENIM';
+      const activePos = parseInt(product.position, 10);
+      const sectionItems = this.items.filter(it => it.section === activeSection);
+      
+      // Sort items by position
+      const sorted = [...sectionItems].sort((a, b) => {
+        const pA = parseInt(a.position, 10) || 0;
+        const pB = parseInt(b.position, 10) || 0;
+        return pA - pB;
+      });
 
-      // Group into Top Hangers (1-4) and Bottom Shelf Grids (5-14)
-      let hangersHtml = '';
-      let shelvesHtml = '';
+      // Split into logical tiers: Hangers (Top Rail), Middle Shelves, Bottom Shelves, Cut Trays
+      const hangers = [];
+      const middleShelves = [];
+      const bottomShelves = [];
+      const cutTrays = [];
 
-      for (let pos = 1; pos <= Math.min(4, totalPos); pos++) {
-        const itemAtPos = sectionItems.find(it => it.position === pos);
+      sorted.forEach((item, idx) => {
+        const slotType = (item.slotType || '').toLowerCase();
+        const shelf = (item.shelf || '').toLowerCase();
+        const pos = parseInt(item.position, 10);
+
+        if (item.cutSize === 'YES' || slotType.includes('cut') || shelf.includes('cut')) {
+          cutTrays.push(item);
+        } else if (slotType.includes('hanger') || slotType.includes('shacket') || shelf.includes('hanger') || shelf.includes('top')) {
+          hangers.push(item);
+        } else if (shelf.includes('middle') || slotType.includes('middle')) {
+          middleShelves.push(item);
+        } else if (shelf.includes('bottom') || slotType.includes('bottom')) {
+          bottomShelves.push(item);
+        } else {
+          // Fallback distribution: 4 hangers, then 5 middle, remainder bottom
+          if (idx < 4) hangers.push(item);
+          else if (idx < 9) middleShelves.push(item);
+          else bottomShelves.push(item);
+        }
+      });
+
+      const renderSlotHtml = (item, isHanger = false) => {
+        const pos = parseInt(item.position, 10);
         const isActive = (pos === activePos);
-        hangersHtml += `
-          <div class="rack-slot hanger-slot ${isActive ? 'active-slot' : ''}">
-            <div class="slot-hanger-hook"></div>
+        const isNewLine = String(item.newLine || '').trim().toUpperCase() === 'YES';
+        const colorName = item.color || `Option #${pos}`;
+        const priceTag = item.signage ? `₹${item.signage}` : '';
+
+        return `
+          <div class="rack-slot ${isHanger ? 'hanger-slot' : 'shelf-slot'} ${isActive ? 'active-slot slot-blinking-target' : ''} ${isNewLine ? 'slot-is-new-line' : ''}"
+               data-pos="${pos}" data-code="${escapeHtml(item.code)}" title="${escapeHtml(colorName)} • ${priceTag}">
+            ${isHanger ? '<div class="slot-hanger-hook"></div>' : ''}
             <div class="slot-box">
-              <span class="slot-pos-badge">#${pos}</span>
-              <span class="slot-item-name">${itemAtPos ? itemAtPos.color : 'Opt ' + pos}</span>
-              ${isActive ? '<span class="slot-target-tag">TARGET</span>' : ''}
+              <div class="slot-top-labels">
+                <span class="slot-pos-badge">#${pos}</span>
+                ${isNewLine ? '<span class="slot-new-tag">NEW</span>' : ''}
+              </div>
+              <span class="slot-item-name">${escapeHtml(colorName)}</span>
+              <span class="slot-item-price">${priceTag}</span>
+              ${isActive ? '<div class="slot-target-radar-tag">📍 YE YAHAN LAGEGA</div>' : ''}
             </div>
           </div>
         `;
-      }
+      };
 
-      for (let pos = 5; pos <= totalPos; pos++) {
-        const itemAtPos = sectionItems.find(it => it.position === pos);
-        const isActive = (pos === activePos);
-        shelvesHtml += `
-          <div class="rack-slot shelf-slot ${isActive ? 'active-slot' : ''}">
-            <span class="slot-pos-badge">#${pos}</span>
-            <span class="slot-item-name">${itemAtPos ? itemAtPos.color : 'Opt ' + pos}</span>
-            ${isActive ? '<span class="slot-target-tag">TARGET</span>' : ''}
-          </div>
-        `;
-      }
+      const hangersHtml = hangers.map(it => renderSlotHtml(it, true)).join('');
+      const middleHtml = middleShelves.map(it => renderSlotHtml(it, false)).join('');
+      const bottomHtml = bottomShelves.map(it => renderSlotHtml(it, false)).join('');
+      const cutHtml = cutTrays.map(it => renderSlotHtml(it, false)).join('');
 
       return `
         <div class="visual-rack-container">
           <div class="rack-header-label">
-            <span>RACK ARCHITECTURE &bull; ${escapeHtml(product.section)}</span>
-            <span class="badge-active-pos">SLOT #${activePos} HIGHLIGHTED</span>
+            <span class="rack-title-badge">🏢 FIXTURE FLOOR MAP &bull; ${escapeHtml(activeSection)}</span>
+            <span class="badge-active-pos pulse-beacon">SLOT #${activePos} TARGET HIGHLIGHTED</span>
           </div>
 
           <div class="rack-diagram">
-            <!-- Top Hanging Rail -->
-            <div class="rack-rail-label">TOP HANGING RAIL (Denim / Shackets)</div>
-            <div class="rack-hanger-row">
-              ${hangersHtml}
-            </div>
+            ${hangers.length > 0 ? `
+              <div class="rack-rail-label">TOP HANGING RAIL (Denim / Shackets)</div>
+              <div class="rack-hanger-row">
+                ${hangersHtml}
+              </div>
+            ` : ''}
 
-            <!-- Middle / Bottom Shelves -->
-            <div class="rack-rail-label" style="margin-top: 10px;">FOLDED SHELF TIERS (Tees / Stacks)</div>
-            <div class="rack-shelf-grid">
-              ${shelvesHtml}
-            </div>
+            ${middleShelves.length > 0 ? `
+              <div class="rack-rail-label" style="margin-top: 12px;">MIDDLE FOLDED SHELF TIERS (Tees / Shirts)</div>
+              <div class="rack-shelf-grid">
+                ${middleHtml}
+              </div>
+            ` : ''}
+
+            ${bottomShelves.length > 0 ? `
+              <div class="rack-rail-label" style="margin-top: 12px;">BOTTOM SHELF TIERS (Stacks / Denims)</div>
+              <div class="rack-shelf-grid">
+                ${bottomHtml}
+              </div>
+            ` : ''}
+
+            ${cutTrays.length > 0 ? `
+              <div class="rack-rail-label" style="margin-top: 12px;">CUT PIECES / BOTTOM TRAYS</div>
+              <div class="rack-shelf-grid">
+                ${cutHtml}
+              </div>
+            ` : ''}
           </div>
         </div>
       `;
+    }
+
+    /**
+     * Get relative (x, y) percent coordinates of target slot on the cropped PDF fixture diagram
+     * Used to overlay the animated pulsing radar beacon ("Ye Yahan Pe Lagega")
+     */
+    getFixtureBeaconCoordinates(product) {
+      if (!product) return { x: 50, y: 50, label: 'SLOT #1' };
+
+      const pNum = product.page || 1;
+      const pos = parseInt(product.position, 10) || 1;
+      let x = 50;
+      let y = 50;
+
+      if (pNum === 1) {
+        // Page 1: M6 DENIM (1-4 rail, 5-9 middle, 10-14 bottom)
+        if (pos <= 4) {
+          x = 22 + (pos - 1) * 18.5;
+          y = 36;
+        } else if (pos <= 9) {
+          x = 12 + (pos - 5) * 16.5;
+          y = 75;
+        } else {
+          x = 12 + (pos - 10) * 16.5;
+          y = 86;
+        }
+      } else if (pNum === 2) {
+        // Page 2: M8 DENIM MONO (23-26 rail, 27-31 middle, 32-36 bottom)
+        if (pos <= 26) {
+          x = 22 + Math.max(0, pos - 23) * 18.5;
+          y = 36;
+        } else if (pos <= 31) {
+          x = 12 + Math.max(0, pos - 27) * 16.5;
+          y = 75;
+        } else {
+          x = 12 + Math.max(0, pos - 32) * 16.5;
+          y = 86;
+        }
+      } else if (pNum === 3 || pNum === 4) {
+        // Page 3 & 4: M9 / M10 ESSENTIALS
+        if (pos <= 4) {
+          x = 22 + Math.max(0, pos - 1) * 18.5;
+          y = 36;
+        } else if (pos <= 8) {
+          x = 14 + Math.max(0, pos - 5) * 18.0;
+          y = 72;
+        } else {
+          x = 14 + Math.max(0, pos - 9) * 18.0;
+          y = 85;
+        }
+      } else if (pNum >= 5) {
+        // Page 5 & 6: MT2 DENIM WORLD
+        if (pos <= 4) {
+          x = 26 + Math.max(0, pos - 1) * 13.0;
+          y = 34;
+        } else if (pos <= 8) {
+          x = 26 + Math.max(0, pos - 5) * 13.0;
+          y = 52;
+        } else if (pos <= 12) {
+          x = 26 + Math.max(0, pos - 9) * 13.0;
+          y = 66;
+        } else {
+          x = 50;
+          y = 78;
+        }
+      }
+
+      const xCoord = Math.max(8, Math.min(92, Math.round(x)));
+      const yCoord = Math.max(10, Math.min(92, Math.round(y)));
+      return {
+        x: xCoord,
+        y: yCoord,
+        xPct: xCoord,
+        yPct: yCoord,
+        label: `SLOT #${pos}`
+      };
+    }
+
+    /**
+     * Get all NEW LINE products in the cheatsheet catalog
+     */
+    getAllNewLines() {
+      return this.items.filter(it => String(it.newLine || '').trim().toUpperCase() === 'YES');
+    }
+
+    /**
+     * Total count of NEW LINE products
+     */
+    getNewLinesCount() {
+      return this.getAllNewLines().length;
+    }
+
+    /**
+     * Breakdown of NEW LINE products grouped by section
+     */
+    getNewLinesBySection() {
+      const result = {};
+      const newLines = this.getAllNewLines();
+      newLines.forEach(it => {
+        const sec = it.section || 'Unassigned';
+        if (!result[sec]) result[sec] = [];
+        result[sec].push(it);
+      });
+      return result;
     }
 
     getAllItems() {

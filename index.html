@@ -45,6 +45,13 @@
 
       <!-- Quick Header Action Buttons -->
       <div class="header-action-icons">
+        <!-- Quick New Lines Pill Button -->
+        <button type="button" class="btn-header-pill-newlines" id="btn-quick-newlines" title="View all New Lines in Cheatsheet">
+          <span class="flame-icon">🔥</span>
+          <span class="newlines-btn-text">NEW LINES</span>
+          <span class="badge-newlines-pill" id="hdr-newlines-count">15</span>
+        </button>
+
         <button type="button" class="icon-action-btn key-btn" id="btn-ai-settings" title="Gemini API Key" aria-label="API Key">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
         </button>
@@ -88,166 +95,156 @@
               <div class="corner tr"></div>
               <div class="corner bl"></div>
               <div class="corner br"></div>
-              <div class="laser-scanline" id="laser-line"></div>
+              <div class="reticle-laser-line"></div>
             </div>
+            <div class="reticle-guide-text">Align barcode inside frame</div>
           </div>
 
-          <!-- Flash Confirmation -->
-          <div class="scan-flash-overlay" id="scan-flash"></div>
-
-          <!-- Viewfinder Top HUD -->
-          <div class="viewfinder-hud">
-            <span class="hud-pill" id="hud-cam-status">CAM: OFF</span>
-            <span class="hud-pill engine-pill" id="hud-target-format">HARDWARE 60 FPS</span>
-          </div>
-
-          <!-- Floating Torch & Sound buttons -->
-          <div class="viewfinder-floating-controls">
-            <button type="button" class="viewfinder-icon-btn" id="btn-toggle-torch" style="display: none;" title="Flashlight">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6h-2a2 2 0 0 0-2 2v2H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h8v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"></path></svg>
+          <!-- Camera Controls Floating Overlay -->
+          <div class="camera-floating-controls">
+            <button type="button" class="cam-float-btn" id="btn-torch" title="Flashlight" aria-label="Toggle flashlight">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
             </button>
-            <button type="button" class="viewfinder-icon-btn" id="btn-toggle-sound" title="Sound">
-              <svg id="icon-sound" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            <button type="button" class="cam-float-btn" id="btn-flip-cam" title="Switch Camera" aria-label="Switch camera">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
             </button>
+            <button type="button" class="cam-float-btn" id="btn-photo-scan" title="Scan Image/Photo" aria-label="Scan from photo">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            </button>
+            <input type="file" id="file-photo-scan" accept="image/*" style="display: none;">
           </div>
         </div>
 
-        <!-- Scanner Controls & Quick Trim -->
-        <div class="scanner-action-dock">
-          <!-- Primary Scan Toggle Button -->
-          <button type="button" class="btn-primary-laser" id="btn-toggle-scanner">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-              <circle cx="12" cy="13" r="4"></circle>
-            </svg>
-            <span id="scanner-btn-label">START CAMERA SCANNER</span>
-          </button>
-
-          <!-- On-Screen Trailing Trim Dial (Change with 1 tap right on camera view) -->
-          <div class="quick-trim-stepper">
-            <span class="trim-stepper-title">Trailing Digits to Cut:</span>
-            <button type="button" class="btn-step-sm" id="btn-quick-trim-minus">&minus;</button>
-            <span class="quick-trim-display" id="quick-trim-display">0 digits</span>
-            <button type="button" class="btn-step-sm" id="btn-quick-trim-plus">&plus;</button>
+        <!-- Scanner Footer Status & Simulation Chips -->
+        <div class="scanner-card-footer">
+          <div class="scanner-status-indicator">
+            <span class="live-dot-beacon"></span>
+            <span id="scanner-live-label" style="color: var(--text);">Camera Active &bull; Continuous Autofocus</span>
           </div>
 
-          <div class="aux-row">
-            <select id="camera-device-select" class="mobile-cam-select" aria-label="Camera Lens">
-              <option value="environment">Back / Rear Camera</option>
-              <option value="user">Front Webcam</option>
-            </select>
-
-            <label class="btn-aux-chip" title="Scan photo">
-              <input type="file" id="barcode-image-upload" accept="image/*" style="display: none;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              Photo
-            </label>
-
-            <button type="button" class="btn-aux-chip" id="btn-simulate-modal">
-              ⚡ Test Scan
+          <!-- Quick Test Barcodes Bar -->
+          <div class="quick-preset-bar">
+            <span class="quick-preset-title">Cheatsheet Barcodes:</span>
+            <button type="button" class="chip-sample-code preset-code-btn" data-code="301079824" data-format="CODE_128">
+              <span class="chip-tag">M8 Pos 33</span>
+              <span class="chip-num">301079824</span>
+            </button>
+            <button type="button" class="chip-sample-code preset-code-btn" data-code="301081626" data-format="CODE_128">
+              <span class="chip-tag">M6 Pos 1</span>
+              <span class="chip-num">301081626</span>
+            </button>
+            <button type="button" class="chip-sample-code preset-code-btn" data-code="301078439" data-format="CODE_128">
+              <span class="chip-tag">M6 Pos 7</span>
+              <span class="chip-num">301078439</span>
+            </button>
+            <button type="button" class="chip-sample-code preset-code-btn" data-code="301081946" data-format="CODE_128">
+              <span class="chip-tag">M8 Pos 23</span>
+              <span class="chip-num">301081946</span>
+            </button>
+            <button type="button" class="chip-sample-code preset-code-btn" data-code="301080548" data-format="CODE_128">
+              <span class="chip-tag">M9 Pos 1</span>
+              <span class="chip-num">301080548</span>
+            </button>
+            <button type="button" class="chip-sample-code preset-code-btn" data-code="301057130" data-format="CODE_128">
+              <span class="chip-tag">M10 Pos 1</span>
+              <span class="chip-num">301057130</span>
             </button>
           </div>
-        </div>
-      </div>
-
-      <!-- Quick Test Sample Barcodes Carousel -->
-      <div class="mobile-presets-shelf">
-        <div class="presets-shelf-title">Tap to Test Cheatsheet Codes:</div>
-        <div class="presets-scroll-track">
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081626" data-format="CODE_128">
-            <span class="chip-tag">M6 Pos 1</span>
-            <span class="chip-num">301081626</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301075847" data-format="CODE_128">
-            <span class="chip-tag">M6 Pos 2</span>
-            <span class="chip-num">301075847</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081624" data-format="CODE_128">
-            <span class="chip-tag">M6 Pos 3</span>
-            <span class="chip-num">301081624</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301078439" data-format="CODE_128">
-            <span class="chip-tag">M6 Pos 7</span>
-            <span class="chip-num">301078439</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081946" data-format="CODE_128">
-            <span class="chip-tag">M8 Pos 23</span>
-            <span class="chip-num">301081946</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301080548" data-format="CODE_128">
-            <span class="chip-tag">M9 Pos 1</span>
-            <span class="chip-num">301080548</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301057130" data-format="CODE_128">
-            <span class="chip-tag">M10 Pos 1</span>
-            <span class="chip-num">301057130</span>
-          </button>
         </div>
       </div>
 
       <!-- ==================================================================
            MAGIC SCAN RESULT CARD (AI EXPLANATION + CROPPED PDF SNIPPET)
            ================================================================== -->
-      <div class="mobile-scan-result-card" id="location-hud">
-        
-        <!-- Header -->
-        <div class="result-card-header">
-          <div>
-            <div class="result-badge-label" id="hud-badge-label">📍 PLANOGRAM LOCATION IDENTIFIED</div>
-            <div class="result-section-name" id="hud-section-name">M6 DENIM</div>
-          </div>
-          <div class="result-pos-cluster">
-            <span class="result-pos-pill" id="hud-pos-badge">POS #1</span>
-            <button type="button" class="btn-close-result" id="btn-close-hud" aria-label="Close">&times;</button>
-          </div>
-        </div>
-
-        <!-- 1. AI Placement Explanation Box -->
-        <div class="ai-speech-box" id="hud-ai-speech-box">
-          <div class="ai-speech-header">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12A10 10 0 0 1 12 2z"></path></svg>
-            <span id="hud-ai-advisor-title">GEMINI AI PLACEMENT ADVISOR</span>
-          </div>
-          <div class="ai-speech-content" id="ai-placement-text">
-            Place this in <strong>M6 DENIM</strong> at <strong>Position #1</strong> (Top hanging rail, 1st hanger on left). Signage is <strong>₹899</strong> and Color is <strong>WHITE</strong>. Instruction: Layer 1st piece of Option 1 with Option 3.
-          </div>
-        </div>
-
-        <!-- Key Specs Grid -->
-        <div class="result-meta-grid" id="hud-meta-grid">
-          <div class="meta-item">
-            <span class="meta-label">Product Code</span>
-            <span class="meta-value" id="hud-code-val">301081626</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label" id="hud-label-second">Signage Price</span>
-            <span class="meta-value price" id="hud-price-val">₹899</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label" id="hud-label-third">Color / Shade</span>
-            <span class="meta-value" id="hud-color-val">WHITE</span>
-          </div>
-          <div class="meta-item">
-            <span class="meta-label" id="hud-label-fourth">Fixture Slot</span>
-            <span class="meta-value" id="hud-slot-type">Hanger 1</span>
-          </div>
-        </div>
-
-        <!-- 2. CROPPED EXACT SNIPPET FROM THE ORIGINAL PDF -->
-        <div class="pdf-cropped-section" id="hud-cropped-section">
-          <div class="pdf-cropped-header">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line></svg>
-            <span id="pdf-cropped-header-label">CROPPED DIRECTLY FROM CHEATSHEET PDF</span>
+        <div class="mobile-scan-result-card" id="location-hud">
+          
+          <!-- Header -->
+          <div class="result-card-header">
+            <div>
+              <div class="result-badge-label" id="hud-badge-label">📍 PLANOGRAM LOCATION IDENTIFIED</div>
+              <div class="result-section-name" id="hud-section-name">M6 DENIM</div>
+            </div>
+            <div class="result-pos-cluster">
+              <!-- Dynamic New Line Tag -->
+              <span class="badge-new-line" id="hud-newline-badge">🔥 NEW LINE: YES</span>
+              <span class="result-pos-pill" id="hud-pos-badge">POS #1</span>
+              <button type="button" class="btn-close-result" id="btn-close-hud" aria-label="Close">&times;</button>
+            </div>
           </div>
 
-          <div class="pdf-cropped-visual-wrap" id="pdf-cropped-img-wrap">
-            <!-- Rendered by PdfCropper as a high-DPI image cropped directly from the PDF page -->
-            <img id="cropped-product-img" class="cropped-doc-image" alt="Cropped PDF Snippet">
+          <!-- 1. AI Placement Explanation Box -->
+          <div class="ai-speech-box" id="hud-ai-speech-box">
+            <div class="ai-speech-header">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12A10 10 0 0 1 12 2z"></path></svg>
+              <span id="hud-ai-advisor-title">GEMINI AI PLACEMENT ADVISOR</span>
+            </div>
+            <div class="ai-speech-content" id="ai-placement-text">
+              Place this in <strong>M6 DENIM</strong> at <strong>Position #1</strong> (Top hanging rail, 1st hanger on left). Signage is <strong>₹899</strong> and Color is <strong>WHITE</strong>. Instruction: Layer 1st piece of Option 1 with Option 3.
+            </div>
           </div>
-        </div>
 
-        <!-- Mini Visual Rack Placement Diagram -->
-        <div id="hud-visual-rack-wrap"></div>
+          <!-- Key Specs Grid -->
+          <div class="result-meta-grid" id="hud-meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">Product Code</span>
+              <span class="meta-value" id="hud-code-val">301081626</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label" id="hud-label-second">Signage Price</span>
+              <span class="meta-value price" id="hud-price-val">₹899</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label" id="hud-label-third">Color / Shade</span>
+              <span class="meta-value" id="hud-color-val">WHITE</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label" id="hud-label-fourth">Fixture Slot</span>
+              <span class="meta-value" id="hud-slot-type">Hanger 1</span>
+            </div>
+            <div class="meta-item" id="hud-newline-meta-item">
+              <span class="meta-label">Assortment Line</span>
+              <span class="meta-value new-line-val" id="hud-newline-val">🔥 YES (NEW)</span>
+            </div>
+          </div>
+
+          <!-- 2. DUAL VISUAL VIEW: GARMENT SNIPPET + ANIMATED FLOOR FIXTURE DIAGRAM (SIDE-BY-SIDE) -->
+          <div class="hud-dual-visual-section" id="hud-dual-visual-section">
+            <div class="hud-visual-split-grid">
+              <!-- Left Panel: Cropped Garment Snippet from PDF -->
+              <div class="visual-panel-card garment-panel">
+                <div class="visual-panel-topbar">
+                  <span class="panel-pill tag-garment">GARMENT TILE</span>
+                  <span class="panel-subtitle" id="pdf-cropped-header-label">PDF CROP</span>
+                </div>
+                <div class="visual-panel-content" id="pdf-cropped-img-wrap">
+                  <img id="cropped-product-img" class="cropped-doc-image" alt="Cropped Product Snippet">
+                </div>
+              </div>
+
+              <!-- Right Panel (Bagal Mein): Floor / Fixture Diagram with Animated Blinking Radar Beacon -->
+              <div class="visual-panel-card fixture-panel">
+                <div class="visual-panel-topbar">
+                  <span class="panel-pill tag-fixture">FLOOR RACK LOCATION</span>
+                  <span class="panel-subtitle blink-beacon-text" id="hud-floor-slot-title">📍 BLINKING TARGET</span>
+                </div>
+                <div class="visual-panel-content fixture-wrap" id="hud-fixture-img-wrap">
+                  <div class="fixture-beacon-container" id="fixture-beacon-container">
+                    <img id="cropped-fixture-img" class="cropped-fixture-image" alt="Floor Fixture Diagram">
+                    <!-- Animated Radar Beacon Point Overlay -->
+                    <div class="beacon-point" id="hud-beacon-point" style="display: none;">
+                      <div class="beacon-pulse-wave"></div>
+                      <div class="beacon-pulse-wave wave-2"></div>
+                      <div class="beacon-dot"></div>
+                      <div class="beacon-marker-badge" id="hud-beacon-badge">YE YAHAN LAGEGA</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Full Rack Architecture Diagram -->
+          <div id="hud-visual-rack-wrap"></div>
 
         <!-- Troubleshooting Quick Action Row (Shown when item is NOT found) -->
         <div class="hud-action-row" id="hud-not-found-actions" style="display: none;">
@@ -265,7 +262,56 @@
     </section>
 
     <!-- ====================================================================
-         SCREEN 2: INTERACTIVE RACK MAP
+         SCREEN 2: FRESH NEW LINES EXPLORER
+         ==================================================================== -->
+    <section class="app-tab-screen" id="tab-newlines" aria-label="Fresh New Lines Explorer">
+      <div class="screen-card">
+        <div class="screen-card-header">
+          <div>
+            <h2 class="screen-title">✨ Fresh New Lines</h2>
+            <div class="screen-subtitle-text">Cheatsheet Catalog &bull; Fresh Launch Assortment</div>
+          </div>
+          <span class="screen-badge newlines-badge" id="screen-newlines-badge">15 New Lines</span>
+        </div>
+
+        <!-- New Lines Summary Metrics -->
+        <div class="newlines-summary-bar">
+          <div class="metric-card">
+            <span class="metric-val" id="metric-newlines-total">15</span>
+            <span class="metric-title">Total New Lines</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-val" id="metric-sections-count">4</span>
+            <span class="metric-title">Active Fixtures</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-val" id="metric-top-section">M8 MONO</span>
+            <span class="metric-title">Largest Launch</span>
+          </div>
+        </div>
+
+        <!-- Filter Chips by Section -->
+        <div class="section-pills-row" id="newlines-section-filter">
+          <button type="button" class="btn-section-pill active" data-filter="ALL">ALL NEW LINES</button>
+          <button type="button" class="btn-section-pill" data-filter="M8 DENIM MONO">M8 MONO</button>
+          <button type="button" class="btn-section-pill" data-filter="M9 ESSENTIALS">M9 ESSENTIALS</button>
+          <button type="button" class="btn-section-pill" data-filter="MT2-FRONT">MT2 FRONT</button>
+          <button type="button" class="btn-section-pill" data-filter="MT2-BACK">MT2 BACK</button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="rack-search-bar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="newlines-search-input" placeholder="Search new line by code, color, or price..." aria-label="Search New Lines">
+        </div>
+
+        <!-- New Lines Product Cards Grid -->
+        <div class="newlines-catalog-grid" id="newlines-catalog-grid"></div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SCREEN 3: INTERACTIVE RACK MAP
          ==================================================================== -->
     <section class="app-tab-screen" id="tab-rack" aria-label="Visual Rack Map">
       <div class="screen-card">
@@ -499,6 +545,14 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
       </div>
       <span class="nav-label">Scanner</span>
+    </button>
+
+    <button type="button" class="nav-tab-btn" data-tab="tab-newlines" id="nav-btn-newlines">
+      <div class="nav-icon-wrap">
+        <span class="nav-flame-icon">🔥</span>
+        <span class="nav-counter-dot newlines-dot" id="nav-newlines-count">15</span>
+      </div>
+      <span class="nav-label">New Lines</span>
     </button>
 
     <button type="button" class="nav-tab-btn" data-tab="tab-rack">

@@ -273,25 +273,41 @@
     }
 
     /**
-     * Crops the fixture rack diagram (left side of cheatsheet page)
+     * Crops the clean physical fixture rack diagram (left side of cheatsheet page)
+     * Focused specifically on the floor rack illustration, slots, and capacity labels
      */
-    async cropRackDiagram(pageNum = 1) {
+    async cropFixtureSnippet(pageNum = 1) {
       const pageData = this.renderedPages.get(pageNum);
-      if (!pageData) return null;
+      if (!pageData || !pageData.canvas) {
+        return this.generateFallbackFixtureSnippet(pageNum);
+      }
 
       const { canvas } = pageData;
       const W = canvas.width;
       const H = canvas.height;
 
-      // Fixture diagram is on the left 26% of the page
+      // Left column contains the fixture illustration:
       const cropX = 0;
-      const cropY = H * 0.08;
-      const cropW = W * 0.255;
-      const cropH = H * 0.85;
+      const cropY = 0;
+      const cropW = Math.round(W * 0.254);
+
+      // Clean height based on page aspect ratio to exclude blank CHEATSHEET box
+      let cropH;
+      if (pageNum === 1 || pageNum === 2 || pageNum === 4) {
+        cropH = Math.round(H * 0.48);
+      } else if (pageNum === 3) {
+        cropH = Math.round(H * 0.38);
+      } else if (pageNum === 5) {
+        cropH = Math.round(H * 0.42);
+      } else if (pageNum === 6) {
+        cropH = Math.round(H * 0.36);
+      } else {
+        cropH = Math.round(Math.min(H * 0.50, W * 0.35));
+      }
 
       const destCanvas = document.createElement('canvas');
-      destCanvas.width = Math.round(cropW);
-      destCanvas.height = Math.round(cropH);
+      destCanvas.width = cropW;
+      destCanvas.height = cropH;
       const destCtx = destCanvas.getContext('2d');
 
       destCtx.drawImage(
@@ -301,6 +317,98 @@
       );
 
       return destCanvas.toDataURL('image/png');
+    }
+
+    // Backwards-compatible alias
+    async cropRackDiagram(pageNum = 1) {
+      return this.cropFixtureSnippet(pageNum);
+    }
+
+    /**
+     * Fallback clean graphic for fixture diagram when PDF canvas is not yet loaded
+     */
+    generateFallbackFixtureSnippet(pageNum = 1) {
+      const c = document.createElement('canvas');
+      c.width = 400;
+      c.height = 460;
+      const ctx = c.getContext('2d');
+
+      // Background
+      ctx.fillStyle = '#0E1117';
+      ctx.fillRect(0, 0, c.width, c.height);
+
+      // Header Banner
+      ctx.fillStyle = '#171B22';
+      ctx.fillRect(0, 0, c.width, 42);
+      ctx.fillStyle = '#55E497';
+      ctx.font = 'bold 15px -apple-system, sans-serif';
+      const secName = pageNum === 2 ? 'M8 DENIM MONO' : (pageNum === 1 ? 'M6 DENIM' : `PAGE ${pageNum} FIXTURE`);
+      ctx.fillText(`🏢 ${secName} (FLOOR RACK)`, 16, 27);
+
+      // Hanging Rail Frame
+      ctx.fillStyle = '#1F2430';
+      ctx.fillRect(20, 58, c.width - 40, 160);
+      ctx.strokeStyle = '#2F3746';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(20, 58, c.width - 40, 160);
+
+      // Hanging Rail Bar
+      ctx.fillStyle = '#55E497';
+      ctx.fillRect(36, 75, c.width - 72, 6);
+
+      // 4 Hanger slots
+      const basePos = pageNum === 2 ? 23 : 1;
+      for (let i = 0; i < 4; i++) {
+        const hx = 44 + i * 82;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.beginPath();
+        ctx.arc(hx + 28, 92, 10, Math.PI, 0);
+        ctx.stroke();
+
+        ctx.fillStyle = '#282F3E';
+        ctx.fillRect(hx, 105, 56, 95);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(`#${basePos + i}`, hx + 16, 155);
+      }
+
+      // Middle Shelf
+      ctx.fillStyle = '#171B24';
+      ctx.fillRect(20, 230, c.width - 40, 85);
+      ctx.strokeStyle = '#2F3746';
+      ctx.strokeRect(20, 230, c.width - 40, 85);
+
+      const midBase = pageNum === 2 ? 27 : 5;
+      for (let i = 0; i < 5; i++) {
+        const sx = 28 + i * 68;
+        ctx.fillStyle = '#222836';
+        ctx.fillRect(sx, 242, 58, 62);
+        ctx.fillStyle = '#8C93A0';
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText(`#${midBase + i}`, sx + 18, 278);
+      }
+
+      // Bottom Shelf
+      ctx.fillStyle = '#171B24';
+      ctx.fillRect(20, 325, c.width - 40, 85);
+      ctx.strokeStyle = '#2F3746';
+      ctx.strokeRect(20, 325, c.width - 40, 85);
+
+      const botBase = pageNum === 2 ? 32 : 10;
+      for (let i = 0; i < 5; i++) {
+        const sx = 28 + i * 68;
+        ctx.fillStyle = '#222836';
+        ctx.fillRect(sx, 337, 58, 62);
+        ctx.fillStyle = '#8C93A0';
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText(`#${botBase + i}`, sx + 18, 373);
+      }
+
+      ctx.fillStyle = '#55E497';
+      ctx.font = '11px monospace';
+      ctx.fillText('• 14 pcs Denim Rail  • 15 pcs Folded Tees', 24, 435);
+
+      return c.toDataURL('image/png');
     }
 
     generateFallbackSnippet(product) {
