@@ -2,17 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scan Dock — AI PDF Cheatsheet & Barcode Terminal</title>
-  <meta name="description" content="Industrial retail merchandising terminal for scanning barcodes at hardware speed, trimming trailing digits, and mapping items directly to PDF planogram display racks.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Scan Dock — Mobile Retail Planogram & Barcode Terminal</title>
+  <meta name="theme-color" content="#14171C">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   
-  <!-- External Libraries for High-Speed Hardware Scanning & PDF Parsing -->
-  <!-- 1. PDF.js for client-side Cheatsheet PDF text & table extraction -->
+  <!-- External Libraries -->
+  <!-- PDF.js for Cheatsheet PDF Extraction -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     if (window.pdfjsLib) {
@@ -20,444 +22,427 @@
     }
   </script>
   
-  <!-- 2. ZXing JS library (multi-format high precision 1D/2D reader fallback) -->
+  <!-- ZXing MultiFormat Barcode Reader -->
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
-  <!-- 3. Modular Stylesheet -->
+  <!-- Mobile-First Stylesheet -->
   <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="mobile-app-body">
 
   <!-- ========================================================================
-       STICKY TERMINAL HEADER
+       MOBILE COMPACT APP HEADER
        ======================================================================== -->
-  <header class="terminal-header">
-    <div class="header-container">
-      <div class="brand">
-        <div class="brand-logo" title="Scan Dock Terminal">SD</div>
-        <div>
-          <h1 class="brand-title">
-            SCAN DOCK
-            <span class="brand-badge">OFFICE TERMINAL v2.0</span>
-          </h1>
+  <header class="app-top-header">
+    <div class="header-main-row">
+      <div class="brand-cluster">
+        <div class="brand-logo-badge">SD</div>
+        <div class="brand-text-wrap">
+          <div class="brand-name">SCAN DOCK</div>
+          <div class="brand-sub">OFFICE TERMINAL v2.0</div>
         </div>
       </div>
 
-      <div class="header-telemetry">
-        <div class="telemetry-item" id="telem-clock">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-          <span id="clock-display">00:00:00</span>
-        </div>
-
-        <div class="telemetry-item">
-          <span class="status-dot active" id="dot-pdf"></span>
-          <span>CHEATSHEET:</span>
-          <strong id="telem-pdf-status">M6-M10 &amp; MT2 Loaded</strong>
-        </div>
-
-        <div class="telemetry-item">
-          <span class="status-dot" id="dot-scanner"></span>
-          <span>SCANNER:</span>
-          <strong id="telem-scanner-status">Standby (RFID/Hardware)</strong>
-        </div>
-
-        <div class="telemetry-item">
-          <span class="status-dot laser"></span>
-          <span>TRIM:</span>
-          <strong id="telem-trim-status">-0 Digits</strong>
-        </div>
-
-        <!-- AI Assistant & Settings Header Buttons -->
-        <button type="button" class="header-btn ai-btn" id="btn-open-ai" title="Open AI Planogram Assistant">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12A10 10 0 0 1 12 2z"></path><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
-          AI Assistant
+      <!-- Quick Action Icons -->
+      <div class="header-action-icons">
+        <button type="button" class="icon-action-btn ai-trigger" id="btn-open-ai" title="AI Cheatsheet Assistant" aria-label="Open AI Assistant">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12A10 10 0 0 1 12 2z"></path><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+          <span class="ai-glow-dot"></span>
         </button>
 
-        <button type="button" class="header-btn" id="btn-ai-settings" title="Gemini API Key Settings">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-          API Key
+        <button type="button" class="icon-action-btn" id="btn-ai-settings" title="Gemini API Key" aria-label="API Key Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
         </button>
       </div>
     </div>
 
-    <!-- Workflow Progress Bar -->
-    <nav class="step-tracker-bar" aria-label="Terminal Workflow">
-      <div class="tracker-inner">
-        <div class="step-node completed" id="step-node-1">
-          <div class="step-num">01</div>
-          <span>PDF Cheatsheet Linked</span>
-        </div>
-        <div class="step-divider"></div>
-
-        <div class="step-node completed" id="step-node-2">
-          <div class="step-num">02</div>
-          <span>Digit Trim Rule</span>
-        </div>
-        <div class="step-divider"></div>
-
-        <div class="step-node current" id="step-node-3">
-          <div class="step-num">03</div>
-          <span>Hardware / Camera Barcode Scan</span>
-        </div>
-        <div class="step-divider"></div>
-
-        <div class="step-node" id="step-node-4">
-          <div class="step-num">04</div>
-          <span>Rack Location &amp; Export</span>
-        </div>
+    <!-- Live Status Strip -->
+    <div class="header-status-strip">
+      <div class="status-chip catalog-chip" id="chip-cheatsheet-status">
+        <span class="pulse-green-dot"></span>
+        <span class="chip-text" id="header-catalog-label">M6-M10 &amp; MT2 (62 items)</span>
       </div>
-    </nav>
+
+      <div class="status-chip scanner-chip" id="chip-scanner-status">
+        <span class="chip-dot" id="header-scanner-dot"></span>
+        <span class="chip-text" id="header-scanner-label">Scanner Standby</span>
+      </div>
+
+      <div class="status-chip trim-chip" id="chip-trim-status">
+        <span class="chip-text" id="header-trim-label">Trim: -0</span>
+      </div>
+    </div>
   </header>
 
   <!-- ========================================================================
-       MAIN APP WORKSPACE
+       MAIN APP CONTAINER (TABBED SCREENS)
        ======================================================================== -->
-  <main class="main-terminal">
+  <main class="app-main-viewport">
 
-    <!-- INSTANT PLANOGRAM RACK POSITION LOCATOR CARD (POPS UP ON SCAN) -->
-    <section class="location-hud-banner" id="location-hud" aria-live="polite">
-      <div class="location-hud-top">
-        <div>
-          <div style="font-family: var(--font-mono); font-size: 11px; color: #8C93A0; text-transform: uppercase;">
-            📍 PLANOGRAM RACK LOCATION FOUND
+    <!-- ====================================================================
+         SCREEN 1: LIVE SCANNER (DEFAULT PRIMARY SCREEN)
+         ==================================================================== -->
+    <section class="app-tab-screen active" id="tab-scanner" aria-label="Barcode Camera Scanner">
+      
+      <!-- Camera Viewport Box -->
+      <div class="mobile-scanner-card">
+        <div class="camera-viewport-shell">
+          <div id="scanner-viewport"></div>
+
+          <!-- Laser Reticle & Scanline -->
+          <div class="scanner-reticle-overlay">
+            <div class="reticle-box">
+              <div class="corner tl"></div>
+              <div class="corner tr"></div>
+              <div class="corner bl"></div>
+              <div class="corner br"></div>
+              <div class="laser-scanline" id="laser-line"></div>
+            </div>
           </div>
-          <div class="hud-section-name" id="hud-section-name">
-            M6 DENIM
+
+          <!-- Flash Confirmation -->
+          <div class="scan-flash-overlay" id="scan-flash"></div>
+
+          <!-- Top HUD Badges Inside Viewfinder -->
+          <div class="viewfinder-hud">
+            <span class="hud-pill" id="hud-cam-status">CAMERA OFF</span>
+            <span class="hud-pill engine-pill" id="hud-target-format">60 FPS HARDWARE</span>
+          </div>
+
+          <!-- Viewfinder Floating Quick Controls (Torch, Flip, Sound) -->
+          <div class="viewfinder-floating-controls">
+            <button type="button" class="viewfinder-icon-btn" id="btn-toggle-torch" style="display: none;" title="Toggle Flashlight">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6h-2a2 2 0 0 0-2 2v2H6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h8v2a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2z"></path><line x1="6" y1="12" x2="6" y2="12.01"></line></svg>
+            </button>
+            <button type="button" class="viewfinder-icon-btn" id="btn-toggle-sound" title="Toggle Beep Sound">
+              <svg id="icon-sound" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            </button>
           </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <span class="hud-pos-badge" id="hud-pos-badge">POSITION #1</span>
-          <button type="button" class="btn-row-action" id="btn-close-hud" aria-label="Dismiss Location Card" style="color: #FFF;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+
+        <!-- Quick Controls Bar Below Viewfinder -->
+        <div class="scanner-action-dock">
+          <!-- Big Laser Start/Stop Button -->
+          <button type="button" class="btn-primary-laser" id="btn-toggle-scanner">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+              <circle cx="12" cy="13" r="4"></circle>
+            </svg>
+            <span id="scanner-btn-label">START CAMERA SCANNER</span>
+          </button>
+
+          <!-- Quick Trimmer Stepper Chip (Change Trim with 1 Tap on Scanner Screen) -->
+          <div class="quick-trim-stepper">
+            <span class="trim-stepper-title">Trailing Trim:</span>
+            <button type="button" class="btn-step-sm" id="btn-quick-trim-minus">&minus;</button>
+            <span class="quick-trim-display" id="quick-trim-display">0 digits</span>
+            <button type="button" class="btn-step-sm" id="btn-quick-trim-plus">&plus;</button>
+          </div>
+
+          <!-- Camera Select & Auxiliary Actions -->
+          <div class="aux-row">
+            <select id="camera-device-select" class="mobile-cam-select" aria-label="Select Camera Lens">
+              <option value="environment">Back / Rear Lens</option>
+              <option value="user">Front Lens</option>
+            </select>
+
+            <label class="btn-aux-chip" title="Upload barcode photo">
+              <input type="file" id="barcode-image-upload" accept="image/*" style="display: none;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Photo
+            </label>
+
+            <button type="button" class="btn-aux-chip" id="btn-simulate-modal" title="Simulate Barcode">
+              ⚡ Test Scan
+            </button>
+          </div>
+
+          <!-- Handheld USB / Bluetooth Scanner Gun Indicator -->
+          <div class="scanner-gun-badge">
+            <span class="gun-dot"></span>
+            <span>Handheld Scanner Guns Active (Scan anytime)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Cheatsheet Presets Horizontal Scroll (Test Immediately on Phone!) -->
+      <div class="mobile-presets-shelf">
+        <div class="presets-shelf-title">Quick Test Barcodes:</div>
+        <div class="presets-scroll-track">
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081626" data-format="CODE_128">
+            <span class="chip-tag">M6 Pos 1</span>
+            <span class="chip-num">301081626</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081624" data-format="CODE_128">
+            <span class="chip-tag">M6 Pos 3</span>
+            <span class="chip-num">301081624</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301078439" data-format="CODE_128">
+            <span class="chip-tag">M6 Pos 7</span>
+            <span class="chip-num">301078439</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081946" data-format="CODE_128">
+            <span class="chip-tag">M8 Pos 23</span>
+            <span class="chip-num">301081946</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301080548" data-format="CODE_128">
+            <span class="chip-tag">M9 Pos 1</span>
+            <span class="chip-num">301080548</span>
+          </button>
+          <button type="button" class="chip-sample-code preset-code-btn" data-code="301057130" data-format="CODE_128">
+            <span class="chip-tag">M10 Pos 1</span>
+            <span class="chip-num">301057130</span>
           </button>
         </div>
       </div>
 
-      <!-- Key Metas -->
-      <div class="hud-details-grid">
-        <div class="hud-field-box">
-          <span class="hud-field-label">Scanned Product Code</span>
-          <span class="hud-field-value" id="hud-code-val">301081626</span>
+      <!-- INSTANT SCAN RESULT BOTTOM CARD (Slides up upon scan) -->
+      <div class="mobile-scan-result-card" id="location-hud">
+        <div class="result-card-header">
+          <div>
+            <div class="result-badge-label">📍 PLANOGRAM RACK FOUND</div>
+            <div class="result-section-name" id="hud-section-name">M6 DENIM</div>
+          </div>
+          <div class="result-pos-cluster">
+            <span class="result-pos-pill" id="hud-pos-badge">POS #1</span>
+            <button type="button" class="btn-close-result" id="btn-close-hud" aria-label="Close result card">&times;</button>
+          </div>
         </div>
-        <div class="hud-field-box">
-          <span class="hud-field-label">Signage Price Tag</span>
-          <span class="hud-field-value" style="color: #55E497;" id="hud-price-val">₹899</span>
+
+        <div class="result-meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Code</span>
+            <span class="meta-value" id="hud-code-val">301081626</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Signage Price</span>
+            <span class="meta-value price" id="hud-price-val">₹899</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Color</span>
+            <span class="meta-value" id="hud-color-val">WHITE</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Type</span>
+            <span class="meta-value" id="hud-slot-type">Hanger 1</span>
+          </div>
         </div>
-        <div class="hud-field-box">
-          <span class="hud-field-label">Color / Style</span>
-          <span class="hud-field-value" id="hud-color-val">WHITE</span>
+
+        <div class="result-remarks-banner" id="hud-remarks-text">
+          LAYER 1ST PIECE OF OPTION 1 WITH OPTION 3.
         </div>
-        <div class="hud-field-box">
-          <span class="hud-field-label">Display Slot Type</span>
-          <span class="hud-field-value" id="hud-slot-type">Hanger 1 (Denim)</span>
-        </div>
+
+        <!-- Mini Visual Rack Placement Diagram -->
+        <div id="hud-visual-rack-wrap"></div>
       </div>
 
-      <div class="hud-remarks-line" id="hud-remarks-text">
-        Instruction: LAYER 1ST PIECE OF OPTION 1 WITH OPTION 3.
-      </div>
-
-      <!-- Interactive Rack Architecture Visual Diagram -->
-      <div id="hud-visual-rack-wrap"></div>
     </section>
 
-    <!-- 2-Column Responsive Layout -->
-    <div class="grid-2col">
-
-      <!-- LEFT COLUMN: PDF Cheatsheet Dock + Digit Trimmer Dial -->
-      <div style="display: flex; flex-direction: column; gap: 24px;">
-
-        <!-- PANEL 1: PDF CHEATSHEET DOCK -->
-        <section class="dock-panel" id="section-pdf">
-          <div class="panel-header">
-            <div class="panel-title-wrap">
-              <span class="panel-tag">01</span>
-              <h2 class="panel-title">PDF Cheatsheet Dock</h2>
-            </div>
-            <span class="brand-badge" id="pdf-state-badge" style="color: var(--ok);">Preloaded Cheatsheet Active</span>
-          </div>
-
-          <div class="panel-body">
-            <!-- Dropzone -->
-            <div class="dropzone-area" id="pdf-dropzone" style="display: none;">
-              <input type="file" id="pdf-file-input" class="dropzone-input" accept="application/pdf,.pdf" aria-label="Upload PDF Cheatsheet">
-              <div class="dropzone-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="12" y1="18" x2="12" y2="12"></line>
-                </svg>
-              </div>
-              <div class="dropzone-text">Drop your custom Cheatsheet PDF here or click to browse</div>
-              <div class="dropzone-subtext">Automatically extracted with PDF.js &bull; Supports M6-M10 &amp; MT2</div>
-            </div>
-
-            <!-- Uploaded / Active Cheatsheet Banner -->
-            <div class="pdf-meta-banner" id="pdf-meta-banner" style="display: flex;">
-              <div class="pdf-meta-info">
-                <span class="pdf-badge-icon">PDF</span>
-                <div>
-                  <div class="pdf-filename" id="pdf-name-label">Store Cheatsheet (M6, M8, M9, M10, MT2)</div>
-                  <div class="pdf-filesize" id="pdf-size-label">6 Pages &bull; 62 Products Indexed</div>
-                </div>
-              </div>
-              <div style="display: flex; gap: 6px;">
-                <button type="button" class="btn-remove-pdf" id="btn-replace-pdf" title="Replace / Upload new PDF">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-                  Upload New
-                </button>
-                <button type="button" class="btn-remove-pdf" id="btn-remove-pdf" title="Reset to default">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  Reset
-                </button>
-              </div>
-            </div>
-
-            <!-- Native Browser PDF Viewport -->
-            <div class="pdf-viewport-container">
-              <div class="pdf-empty-placeholder" id="pdf-placeholder">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-                <span style="font-size: 13px; font-weight: 600; color: #FFF;">Cheatsheet Catalog Active</span>
-                <span style="font-size: 11.5px; opacity: 0.7;">Upload a PDF to view native inline pages or scan product barcodes</span>
-              </div>
-              <iframe id="pdf-frame" class="pdf-iframe" title="PDF Document Viewer"></iframe>
-            </div>
-          </div>
-        </section>
-
-        <!-- PANEL 2: DIGIT TRIM RULE (NUMBER DIAL & SLIDER) -->
-        <section class="dock-panel" id="section-trim">
-          <div class="panel-header">
-            <div class="panel-title-wrap">
-              <span class="panel-tag">02</span>
-              <h2 class="panel-title">Digit Trim Rule</h2>
-            </div>
-            <span class="brand-badge" style="color: var(--laser);">Number Dial</span>
-          </div>
-
-          <div class="panel-body">
-            <p style="font-size: 12.5px; color: var(--muted); margin-top: -4px;">
-              Automatically strip trailing size/batch check digits (<strong>N</strong>) to extract exact 9-digit product codes.
-            </p>
-
-            <!-- Stepper Dial + Range Slider -->
-            <div class="trim-dock">
-              <div class="trim-header">
-                <span class="trim-label">Trailing Digits to Exclude (N)</span>
-                <span class="trim-counter-display"><span id="trim-val-text">0</span> of 12 max</span>
-              </div>
-
-              <div class="trim-stepper-row">
-                <button type="button" class="dial-btn" id="btn-trim-minus" aria-label="Decrease trim digits">&minus;</button>
-                <div class="dial-display">
-                  <span class="dial-number" id="dial-display-num">0</span>
-                  <span class="dial-subtext">Digits Trimmed</span>
-                </div>
-                <button type="button" class="dial-btn" id="btn-trim-plus" aria-label="Increase trim digits">&plus;</button>
-              </div>
-
-              <div>
-                <input type="range" class="trim-slider" id="trim-range" min="0" max="12" step="1" value="0" aria-label="Trim range slider">
-                <div class="slider-ticks">
-                  <span>0 (Exact Raw Code)</span>
-                  <span>3</span>
-                  <span>6</span>
-                  <span>9</span>
-                  <span>12 Max</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Live Strikethrough Preview -->
-            <div class="trim-preview-card">
-              <div class="preview-header-line">
-                <span>Live Barcode Trim Preview</span>
-                <span class="saved-code-pill" id="preview-saved-pill">Saved: 301081626</span>
-              </div>
-
-              <div class="preview-code-display" id="preview-code-wrap">
-                <span>
-                  <span class="code-keep" id="code-part-keep">301081626</span><span class="code-cut" id="code-part-cut"></span>
-                </span>
-                <span style="font-size: 11px; font-weight: 500; color: var(--muted); font-family: var(--font-mono);" id="preview-len-label">(9 chars)</span>
-              </div>
-
-              <div class="preview-custom-test">
-                <span style="font-size: 11px; font-family: var(--font-mono); color: var(--muted); white-space: nowrap;">Test Sample:</span>
-                <input type="text" class="preview-custom-input" id="custom-test-barcode" value="301081626" placeholder="Type sample barcode to test..." maxlength="32">
-              </div>
-            </div>
-          </div>
-        </section>
-
-      </div>
-
-      <!-- RIGHT COLUMN: Hardware-Speed Barcode Scanner Terminal -->
-      <div style="display: flex; flex-direction: column; gap: 24px;">
-
-        <section class="dock-panel" id="section-scanner">
-          <div class="panel-header">
-            <div class="panel-title-wrap">
-              <span class="panel-tag" style="background: var(--laser);">03</span>
-              <h2 class="panel-title">Hardware Barcode Scanner</h2>
-            </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="status-dot" id="scanner-active-dot"></span>
-              <span class="brand-badge" id="scanner-speed-badge">RFID-Speed 60 FPS</span>
-            </div>
-          </div>
-
-          <div class="panel-body">
-            <!-- Viewport -->
-            <div class="scanner-frame">
-              <div id="scanner-viewport"></div>
-
-              <!-- Reticle & Laser Sweep -->
-              <div class="scanner-reticle-overlay">
-                <div class="reticle-box">
-                  <div class="corner tl"></div>
-                  <div class="corner tr"></div>
-                  <div class="corner bl"></div>
-                  <div class="corner br"></div>
-                  <div class="laser-scanline" id="laser-line"></div>
-                </div>
-              </div>
-
-              <!-- Flash Overlay -->
-              <div class="scan-flash-overlay" id="scan-flash"></div>
-
-              <!-- HUD Badges -->
-              <div class="scanner-hud-top">
-                <span class="hud-badge" id="hud-cam-status">CAM: STANDBY</span>
-                <span class="hud-badge" id="hud-target-format">HARDWARE BARCODEDETECTOR</span>
-              </div>
-            </div>
-
-            <!-- Controls -->
-            <div class="scanner-controls">
-              <div class="controls-row-main">
-                <button type="button" class="btn-laser-main" id="btn-toggle-scanner">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                    <circle cx="12" cy="13" r="4"></circle>
-                  </svg>
-                  <span id="scanner-btn-label">START CAMERA SCANNER</span>
-                </button>
-
-                <button type="button" class="btn-secondary" id="btn-simulate-modal" title="Simulate Barcode / Manual Input">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="4" y1="9" x2="20" y2="9"></line>
-                    <line x1="4" y1="15" x2="20" y2="15"></line>
-                    <line x1="10" y1="3" x2="8" y2="21"></line>
-                    <line x1="16" y1="3" x2="14" y2="21"></line>
-                  </svg>
-                  Test Scan
-                </button>
-              </div>
-
-              <div class="controls-row-aux">
-                <div style="display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted);">
-                  <label for="camera-device-select">Lens:</label>
-                  <select id="camera-device-select" class="camera-select" aria-label="Camera selector">
-                    <option value="environment">Rear / Back Camera</option>
-                    <option value="user">Front Webcam</option>
-                  </select>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <button type="button" class="btn-tool-chip" id="btn-toggle-torch" style="display: none;" title="Toggle flashlight">
-                    🔦 Torch
-                  </button>
-
-                  <label class="btn-tool-chip" style="cursor: pointer;" title="Scan a barcode photo or image">
-                    <input type="file" id="barcode-image-upload" accept="image/*" style="display: none;">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                    Scan Photo
-                  </label>
-
-                  <button type="button" class="btn-tool-chip" id="btn-toggle-sound" title="Toggle audio chirp">
-                    <span id="sound-state-label">Beep ON</span>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Warehouse Handheld Laser Gun Note -->
-              <div style="background: rgba(20, 23, 28, 0.04); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px;">
-                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ok);"></span>
-                <span><strong>Handheld Scanner Guns Active:</strong> Wireless &amp; USB laser guns can scan anytime without clicking.</span>
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-      </div>
-    </div>
-
-    <!-- ========================================================================
-         PANEL 4: SCANNED RESULTS LOG TABLE & EXPORTS
-         ======================================================================== -->
-    <section class="dock-panel" id="section-log">
-      <div class="panel-header">
-        <div class="panel-title-wrap">
-          <span class="panel-tag" style="background: var(--ok);">04</span>
-          <h2 class="panel-title">Scanned Results Log</h2>
+    <!-- ====================================================================
+         SCREEN 2: INTERACTIVE RACK MAP (VISUAL PLANOGRAM BROWSER)
+         ==================================================================== -->
+    <section class="app-tab-screen" id="tab-rack" aria-label="Visual Rack Map">
+      <div class="screen-card">
+        <div class="screen-card-header">
+          <h2 class="screen-title">Visual Rack Architecture</h2>
+          <span class="screen-badge">Interactive Map</span>
         </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span class="brand-badge" id="results-count-badge">0 Scans</span>
+
+        <!-- Section Selector Tabs -->
+        <div class="section-pills-row" id="rack-section-selector">
+          <button type="button" class="btn-section-pill active" data-section="M6 DENIM">M6 DENIM</button>
+          <button type="button" class="btn-section-pill" data-section="M8 DENIM MONO">M8 MONO</button>
+          <button type="button" class="btn-section-pill" data-section="M9 ESSENTIALS">M9 ESSENTIALS</button>
+          <button type="button" class="btn-section-pill" data-section="M10 ESSENTIALS">M10 ESSENTIALS</button>
+          <button type="button" class="btn-section-pill" data-section="MT2-FRONT">MT2 FRONT</button>
+          <button type="button" class="btn-section-pill" data-section="MT2-BACK">MT2 BACK</button>
+        </div>
+
+        <!-- Rack Search Box -->
+        <div class="rack-search-bar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="rack-search-input" placeholder="Search product code or color on rack..." aria-label="Search on rack">
+        </div>
+
+        <!-- Dedicated Visual Rack Container -->
+        <div class="full-rack-display-container" id="full-rack-display"></div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SCREEN 3: PDF CHEATSHEET DOCK & VIEWER
+         ==================================================================== -->
+    <section class="app-tab-screen" id="tab-pdf" aria-label="Cheatsheet PDF Dock">
+      <div class="screen-card">
+        <div class="screen-card-header">
+          <h2 class="screen-title">Cheatsheet PDF Dock</h2>
+          <span class="screen-badge">Native Viewer</span>
+        </div>
+
+        <!-- Upload & Status Banner -->
+        <div class="pdf-mobile-meta-box">
+          <div class="pdf-info-row">
+            <div class="pdf-doc-badge">PDF</div>
+            <div class="pdf-details">
+              <div class="pdf-name" id="pdf-name-label">Store Cheatsheet (M6, M8, M9, M10, MT2)</div>
+              <div class="pdf-stats" id="pdf-size-label">6 Pages &bull; 62 Products Indexed</div>
+            </div>
+          </div>
+
+          <div class="pdf-actions-row">
+            <button type="button" class="btn-pdf-act" id="btn-replace-pdf">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+              Upload PDF
+            </button>
+            <input type="file" id="pdf-file-input" accept="application/pdf,.pdf" style="display: none;">
+
+            <button type="button" class="btn-pdf-act" id="btn-remove-pdf">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              Reset Catalog
+            </button>
+          </div>
+        </div>
+
+        <!-- Dropzone when no PDF is attached -->
+        <div class="dropzone-area" id="pdf-dropzone" style="display: none;">
+          <div class="dropzone-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+          </div>
+          <div class="dropzone-text">Tap to browse .pdf cheatsheet</div>
+          <div class="dropzone-subtext">Automatically extracted with PDF.js</div>
+        </div>
+
+        <!-- Mobile PDF Viewer Frame -->
+        <div class="mobile-pdf-viewport-frame">
+          <div class="pdf-empty-placeholder" id="pdf-placeholder">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+            <div style="font-weight: 600; color: #FFF; font-size: 13px;">Preloaded Cheatsheet Active</div>
+            <div style="font-size: 11.5px; opacity: 0.7;">Upload a PDF to view native inline pages</div>
+          </div>
+          <iframe id="pdf-frame" class="pdf-iframe" title="PDF Document Viewer"></iframe>
         </div>
       </div>
+    </section>
 
-      <div class="panel-body">
-        <div class="table-toolbar">
-          <input type="search" class="table-search" id="search-results-input" placeholder="Search codes, sections, or racks..." aria-label="Filter scanned results">
+    <!-- ====================================================================
+         SCREEN 4: DIGIT TRIM RULE DIAL
+         ==================================================================== -->
+    <section class="app-tab-screen" id="tab-trim" aria-label="Digit Trim Rule">
+      <div class="screen-card">
+        <div class="screen-card-header">
+          <h2 class="screen-title">Digit Trim Rule</h2>
+          <span class="screen-badge">Number Dial</span>
+        </div>
 
-          <div class="table-actions">
-            <button type="button" class="btn-export" id="btn-export-csv" disabled>
+        <p class="screen-desc">
+          Automatically strip trailing size or batch check digits ($N$) to extract exact 9-digit garment codes.
+        </p>
+
+        <!-- Stepper Dial -->
+        <div class="trim-dial-card">
+          <div class="dial-top-label">
+            <span>Trailing Digits to Cut</span>
+            <span class="dial-count-tag" id="trim-val-text">0 of 12</span>
+          </div>
+
+          <div class="dial-control-cluster">
+            <button type="button" class="btn-dial-touch" id="btn-trim-minus">&minus;</button>
+            <div class="dial-number-badge">
+              <span class="big-dial-digit" id="dial-display-num">0</span>
+              <span class="dial-label-sub">Digits Excluded</span>
+            </div>
+            <button type="button" class="btn-dial-touch" id="btn-trim-plus">&plus;</button>
+          </div>
+
+          <input type="range" class="trim-slider" id="trim-range" min="0" max="12" step="1" value="0" aria-label="Trim digits range slider">
+          <div class="slider-ticks">
+            <span>0 (Raw)</span>
+            <span>3</span>
+            <span>6</span>
+            <span>9</span>
+            <span>12 Max</span>
+          </div>
+        </div>
+
+        <!-- Live Visual Preview -->
+        <div class="preview-box">
+          <div class="preview-header">
+            <span>Live Strikethrough Preview</span>
+            <span class="saved-code-pill" id="preview-saved-pill">Saved: 301081626</span>
+          </div>
+
+          <div class="preview-code-display" id="preview-code-wrap">
+            <span>
+              <span class="code-keep" id="code-part-keep">301081626</span><span class="code-cut" id="code-part-cut"></span>
+            </span>
+            <span class="preview-len-label" id="preview-len-label">(9 chars)</span>
+          </div>
+
+          <div class="preview-test-input-row">
+            <span class="test-input-label">Test Barcode:</span>
+            <input type="text" class="preview-custom-input" id="custom-test-barcode" value="301081626" placeholder="Type sample barcode..." maxlength="32">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SCREEN 5: SCANNED LOG & EXPORTS
+         ==================================================================== -->
+    <section class="app-tab-screen" id="tab-log" aria-label="Scanned Results Log">
+      <div class="screen-card">
+        <div class="screen-card-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h2 class="screen-title">Scanned Log</h2>
+            <span class="brand-badge" id="results-count-badge">0 Scans</span>
+          </div>
+          <button type="button" class="btn-clear-action" id="btn-clear-log" disabled>Clear All</button>
+        </div>
+
+        <!-- Search & Export Controls -->
+        <div class="log-controls-cluster">
+          <input type="search" class="log-search-input" id="search-results-input" placeholder="Filter scanned codes or racks..." aria-label="Search scanned log">
+
+          <div class="log-export-btn-group">
+            <button type="button" class="btn-export-mobile" id="btn-export-csv" disabled>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
               Export CSV
             </button>
-            <button type="button" class="btn-export" id="btn-export-json" disabled>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+            <button type="button" class="btn-export-mobile" id="btn-export-json" disabled>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
               Export JSON
-            </button>
-            <button type="button" class="btn-export" id="btn-clear-log" style="color: var(--laser);" disabled>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-              Clear All
             </button>
           </div>
         </div>
 
-        <div class="table-container">
+        <!-- Scanned Items List (Mobile-Optimized Cards) -->
+        <div class="mobile-log-list" id="scans-list-container">
+          <!-- Populated dynamically as cards -->
+        </div>
+
+        <!-- Desktop Table Fallback (for large screens) -->
+        <div class="desktop-table-shell">
           <table class="results-table" id="scans-table">
             <thead>
               <tr>
-                <th style="width: 50px;">#</th>
-                <th style="width: 130px;">Time</th>
-                <th style="width: 110px;">Format</th>
-                <th>Saved (Trimmed) Code</th>
-                <th>Planogram Rack Location</th>
-                <th style="width: 90px;">Trim</th>
-                <th style="width: 80px; text-align: right;">Actions</th>
+                <th style="width: 40px;">#</th>
+                <th style="width: 100px;">Time</th>
+                <th style="width: 100px;">Format</th>
+                <th>Saved Code</th>
+                <th>Rack Location</th>
+                <th style="width: 70px;">Trim</th>
+                <th style="width: 70px; text-align: right;">Action</th>
               </tr>
             </thead>
             <tbody id="scans-tbody"></tbody>
           </table>
+        </div>
 
-          <div class="empty-table-state" id="table-empty-state">
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-              <line x1="6" y1="8" x2="6" y2="16"></line>
-              <line x1="10" y1="8" x2="10" y2="16"></line>
-              <line x1="14" y1="8" x2="14" y2="16"></line>
-              <line x1="18" y1="8" x2="18" y2="16"></line>
-            </svg>
-            <div style="font-weight: 600; color: var(--ink);">No barcodes scanned yet</div>
-            <div style="font-size: 12px;">Scan garment tags with camera, laser gun, or simulator to instantly locate rack positions.</div>
-          </div>
+        <!-- Empty State -->
+        <div class="empty-table-state" id="table-empty-state">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="6" y1="8" x2="6" y2="16"></line><line x1="10" y1="8" x2="10" y2="16"></line></svg>
+          <div style="font-weight: 600; color: var(--ink);">No barcodes scanned yet</div>
+          <div style="font-size: 12px; color: var(--muted);">Switch to Scanner tab to scan product barcodes</div>
         </div>
       </div>
     </section>
@@ -465,29 +450,68 @@
   </main>
 
   <!-- ========================================================================
-       AI ASSISTANT DRAWER
+       MOBILE STICKY BOTTOM NAVIGATION BAR
+       ======================================================================== -->
+  <nav class="mobile-bottom-nav" aria-label="Bottom Navigation">
+    <button type="button" class="nav-tab-btn active" data-tab="tab-scanner">
+      <div class="nav-icon-wrap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </div>
+      <span class="nav-label">Scanner</span>
+    </button>
+
+    <button type="button" class="nav-tab-btn" data-tab="tab-rack">
+      <div class="nav-icon-wrap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      </div>
+      <span class="nav-label">Rack Map</span>
+    </button>
+
+    <button type="button" class="nav-tab-btn" data-tab="tab-pdf">
+      <div class="nav-icon-wrap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+      </div>
+      <span class="nav-label">Cheatsheet</span>
+    </button>
+
+    <button type="button" class="nav-tab-btn" data-tab="tab-trim">
+      <div class="nav-icon-wrap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg>
+      </div>
+      <span class="nav-label">Trim Dial</span>
+    </button>
+
+    <button type="button" class="nav-tab-btn" data-tab="tab-log">
+      <div class="nav-icon-wrap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        <span class="nav-counter-dot" id="nav-log-count" style="display: none;">0</span>
+      </div>
+      <span class="nav-label">Log</span>
+    </button>
+  </nav>
+
+  <!-- ========================================================================
+       AI ASSISTANT DRAWER (MOBILE BOTTOM/SIDE SHEET)
        ======================================================================== -->
   <aside class="ai-drawer" id="ai-drawer" aria-label="AI Planogram Assistant">
     <div class="ai-drawer-header">
       <div class="ai-drawer-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12A10 10 0 0 1 12 2z"></path></svg>
-        AI Planogram Assistant
+        AI Cheatsheet Assistant
       </div>
-      <button type="button" class="btn-row-action" id="btn-close-ai" aria-label="Close AI Assistant">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-      </button>
+      <button type="button" class="btn-row-action" id="btn-close-ai" aria-label="Close AI">&times;</button>
+    </div>
+
+    <div class="ai-quick-prompts-bar">
+      <button type="button" class="quick-prompt-chip" data-prompt="Where does 301081626 go?">301081626 location?</button>
+      <button type="button" class="quick-prompt-chip" data-prompt="List M6 Denim items">M6 Denim items?</button>
+      <button type="button" class="quick-prompt-chip" data-prompt="Show all 899 price items">Price 899 items?</button>
     </div>
 
     <div class="ai-messages-container" id="ai-messages">
       <div class="ai-msg bot">
         👋 <strong>Welcome to Scan Dock AI!</strong><br>
-        I have indexed all 6 pages of your Visual Merchandising Cheatsheet (M6, M8, M9, M10, MT2).<br><br>
-        Ask me anything, like:
-        <ul>
-          <li><em>"Where does code 301081626 go?"</em></li>
-          <li><em>"Which items belong in M6 Denim?"</em></li>
-          <li><em>"What products have price 899?"</em></li>
-        </ul>
+        Ask any question about garment positions, signage prices, or rack locations in your Cheatsheet.
       </div>
     </div>
 
@@ -504,89 +528,58 @@
     <div class="dialog-card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <h3 class="dialog-title">Google Gemini API Key</h3>
-        <button type="button" class="btn-row-action" id="btn-close-apikey">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
+        <button type="button" class="btn-row-action" id="btn-close-apikey">&times;</button>
       </div>
-
-      <p style="font-size: 13px; color: var(--muted); margin-top: -6px;">
-        Enter your Google Gemini API key to enable full AI reasoning. Get a free API key at 
+      <p style="font-size: 13px; color: var(--muted);">
+        Enter your Google Gemini API key for conversational AI. Free key from 
         <a href="https://aistudio.google.com/" target="_blank" rel="noopener" style="color: #1A62C6; font-weight: 600;">Google AI Studio</a>.
       </p>
-
       <div style="display: flex; flex-direction: column; gap: 6px;">
-        <label for="gemini-key-input" style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;">Gemini API Key</label>
+        <label for="gemini-key-input" style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--muted);">API Key</label>
         <input type="password" id="gemini-key-input" class="preview-custom-input" placeholder="AIzaSy...">
       </div>
-
-      <div style="font-size: 11.5px; color: var(--muted); line-height: 1.4;">
-        🔒 Your API key is stored securely in your browser's <code>localStorage</code> and never sent to any third-party server.
-      </div>
-
       <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;">
-        <button type="button" class="btn-laser-main" id="btn-save-apikey" style="flex: 0 0 auto; padding: 0 20px;">
-          Save API Key
+        <button type="button" class="btn-primary-laser" id="btn-save-apikey" style="flex: 0 0 auto; height: 38px; padding: 0 16px;">
+          Save Key
         </button>
       </div>
     </div>
   </div>
 
   <!-- ========================================================================
-       MODAL: SIMULATE BARCODE SCAN (TESTING & OFFICE MANUAL LOOKUP)
+       MODAL: SIMULATE BARCODE SCAN (TESTING & MANUAL ENTRY)
        ======================================================================== -->
   <div class="dialog-backdrop" id="simulate-dialog">
     <div class="dialog-card">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 class="dialog-title">Barcode Simulator &amp; Cheatsheet Samples</h3>
-        <button type="button" class="btn-row-action" id="btn-close-sim">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
+        <h3 class="dialog-title">Test Barcode Simulator</h3>
+        <button type="button" class="btn-row-action" id="btn-close-sim">&times;</button>
       </div>
-
-      <p style="font-size: 13px; color: var(--muted); margin-top: -6px;">
-        Click any real product from your Cheatsheet to test the position locator immediately:
+      <p style="font-size: 12.5px; color: var(--muted); margin-top: -4px;">
+        Tap any preset code from your Cheatsheet to test the rack position locator:
       </p>
-
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        <label style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;">Store Cheatsheet Presets</label>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <button type="button" class="btn-tool-chip preset-code-btn" data-code="301081626" data-format="CODE_128">
-            M6 Pos 1: 301081626 (White)
-          </button>
-          <button type="button" class="btn-tool-chip preset-code-btn" data-code="301081624" data-format="CODE_128">
-            M6 Pos 3: 301081624 (Lt Indigo)
-          </button>
-          <button type="button" class="btn-tool-chip preset-code-btn" data-code="301078439" data-format="CODE_128">
-            M6 Pos 7: 301078439 (Warm Taupe)
-          </button>
-          <button type="button" class="btn-tool-chip preset-code-btn" data-code="301081946" data-format="CODE_128">
-            M8 Pos 23: 301081946 (Lt Indigo)
-          </button>
-          <button type="button" class="btn-tool-chip preset-code-btn" data-code="301080548" data-format="CODE_128">
-            M9 Pos 1: 301080548 (Coffee)
-          </button>
-          <button type="button" class="btn-tool-chip preset-code-btn" data-code="301057130" data-format="CODE_128">
-            M10 Pos 1: 301057130 (Off White)
-          </button>
-        </div>
+      <div class="modal-presets-grid">
+        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301081626" data-format="CODE_128">M6: 301081626 (White)</button>
+        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301081624" data-format="CODE_128">M6: 301081624 (Indigo)</button>
+        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301078439" data-format="CODE_128">M6: 301078439 (Taupe)</button>
+        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301081946" data-format="CODE_128">M8: 301081946 (Indigo)</button>
+        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301080548" data-format="CODE_128">M9: 301080548 (Coffee)</button>
+        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301057130" data-format="CODE_128">M10: 301057130 (White)</button>
       </div>
-
-      <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
-        <label for="manual-barcode-input" style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase;">Manual Product Code / Barcode</label>
-        <div style="display: flex; gap: 8px;">
-          <input type="text" id="manual-barcode-input" class="preview-custom-input" value="301081626" placeholder="Enter product code...">
-          <select id="manual-format-select" class="camera-select" style="max-width: 120px;">
+      <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+        <label for="manual-barcode-input" style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--muted);">Manual Barcode Input</label>
+        <div style="display: flex; gap: 6px;">
+          <input type="text" id="manual-barcode-input" class="preview-custom-input" value="301081626">
+          <select id="manual-format-select" class="mobile-cam-select" style="max-width: 105px;">
             <option value="CODE_128">CODE-128</option>
             <option value="EAN_13">EAN-13</option>
-            <option value="UPC_A">UPC-A</option>
           </select>
         </div>
       </div>
-
-      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
-        <button type="button" class="btn-secondary" id="btn-cancel-sim">Cancel</button>
-        <button type="button" class="btn-laser-main" id="btn-submit-sim" style="flex: 0 0 auto; padding: 0 20px;">
-          Scan &amp; Locate Rack
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+        <button type="button" class="btn-aux-chip" id="btn-cancel-sim">Cancel</button>
+        <button type="button" class="btn-primary-laser" id="btn-submit-sim" style="flex: 0 0 auto; height: 38px; padding: 0 16px;">
+          Scan Code
         </button>
       </div>
     </div>
@@ -594,9 +587,7 @@
 
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- ========================================================================
-       MODULAR APPLICATION JAVASCRIPT
-       ======================================================================== -->
+  <!-- Scripts -->
   <script src="sample-data/cheatsheet-data.js"></script>
   <script src="js/trimmer.js"></script>
   <script src="js/scanner.js"></script>
