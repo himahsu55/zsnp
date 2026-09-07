@@ -174,6 +174,11 @@
       });
     }
 
+    // Ensure all 56 baseline store products are active on boot
+    if (planogram.getTotalCount() < planogram.defaultItems.length) {
+      planogram.resetToDefault();
+    }
+
     // 4. Tab Navigation Switcher
     function switchTab(targetTabId) {
       state.activeTab = targetTabId;
@@ -722,28 +727,26 @@
           // 2. Parse Text with Multi-tier local extractor
           const res = await planogram.parsePdfFile(file);
 
-          // 3. If local extraction found items
-          if (res.success && res.count > 0) {
-            if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = `${cropper.getPageCount()} Pages • ${res.count} Products Indexed`;
-            db.saveLocalPlanogram(file.name, planogram.getAllItems());
-            showToast(`PDF Analyzed: ${res.count} items indexed fixture-by-fixture!`, 'success');
-          } else if (ai.hasApiKey()) {
-            // Scanned PDF or slides: use Gemini AI Vision
-            if (el.aiExtractStatusText) el.aiExtractStatusText.textContent = 'Gemini AI Vision analyzing pages...';
-            const visionItems = await ai.extractPlanogramWithGeminiVision(cropper.getAllCanvases(), (c, t, m) => {
-              if (el.aiExtractStatusText) el.aiExtractStatusText.textContent = m;
-            });
-            if (visionItems && visionItems.length > 0) {
-              planogram.setItems(visionItems, file.name);
-              if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = `${cropper.getPageCount()} Pages • ${visionItems.length} Products Indexed by AI`;
-              db.saveLocalPlanogram(file.name, planogram.getAllItems());
-              showToast(`PDF Analyzed: ${visionItems.length} items extracted by Gemini Vision!`, 'success');
-            } else {
-              showToast('PDF loaded. Raw document page search active.', 'info');
-            }
-          } else {
-            if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = `${cropper.getPageCount()} Pages • Document Search Ready`;
-            showToast('PDF loaded and rendered for instant visual cropping', 'info');
+          // 3. Update planogram status and storage
+          if (el.pdfSizeLabel) {
+            el.pdfSizeLabel.textContent = `${cropper.getPageCount()} Pages • ${res.count} Products Indexed & Active`;
+          }
+          db.saveLocalPlanogram(file.name, planogram.getAllItems());
+          showToast(`PDF Analyzed: ${res.count} products indexed and active!`, 'success');
+
+          // If Gemini API Key is available and document had pages with subset/scanned text, enrich with Vision
+          if (ai.hasApiKey() && (res.extractedCount || 0) < 20) {
+            ai.extractPlanogramWithGeminiVision(cropper.getAllCanvases()).then(visionItems => {
+              if (visionItems && visionItems.length > 0) {
+                const added = planogram.addItems(visionItems);
+                if (added > 0) {
+                  db.saveLocalPlanogram(file.name, planogram.getAllItems());
+                  if (el.pdfSizeLabel) {
+                    el.pdfSizeLabel.textContent = `${cropper.getPageCount()} Pages • ${planogram.getTotalCount()} Products Indexed & Active`;
+                  }
+                }
+              }
+            }).catch(console.warn);
           }
         }
 
@@ -772,7 +775,7 @@
         planogram.resetToDefault();
 
         if (el.pdfNameLabel) el.pdfNameLabel.textContent = 'Store Cheatsheet (M6-M10 & MT2)';
-        if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = '6 Pages • 62 Products Indexed';
+        if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = '6 Pages • 56 Products Indexed';
         if (el.pdfDocBadge) el.pdfDocBadge.textContent = 'PDF';
 
         docViewer.renderDefaultCheatsheetView();

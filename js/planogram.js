@@ -75,22 +75,33 @@
     lookup(scannedCode) {
       if (!scannedCode) return null;
       const code = String(scannedCode).trim();
+      const codeDigits = code.replace(/\D/g, '');
 
       // 1. Direct exact match
       if (this.codeIndex.has(code)) {
         return this.codeIndex.get(code);
       }
 
-      // 2. Loose match
+      // 2. Digits-only match
+      if (codeDigits && this.codeIndex.has(codeDigits)) {
+        return this.codeIndex.get(codeDigits);
+      }
+
+      // 3. Loose match (substring / suffix / prefix)
       for (const [indexedCode, item] of this.codeIndex.entries()) {
-        if (indexedCode.includes(code) || code.includes(indexedCode)) {
+        const indexedDigits = indexedCode.replace(/\D/g, '');
+        if (
+          indexedCode.includes(code) ||
+          code.includes(indexedCode) ||
+          (indexedDigits && codeDigits && (indexedDigits.includes(codeDigits) || codeDigits.includes(indexedDigits)))
+        ) {
           return item;
         }
       }
 
-      // 3. Raw page text match from uploaded document
+      // 4. Raw page text match from uploaded document
       for (const [pageNum, pageText] of this.pageTextMap.entries()) {
-        if (pageText.includes(code)) {
+        if (pageText.includes(code) || (codeDigits && pageText.includes(codeDigits))) {
           const section = this.pageSectionMap.get(pageNum) || `DOCUMENT PAGE ${pageNum}`;
           const synthItem = {
             code: code,
@@ -216,16 +227,35 @@
           }
         }
 
-        if (extractedItems.length > 0) {
-          this.items = extractedItems;
-          this.rebuildIndex();
-          this.currentPdfName = file.name;
-          return { success: true, count: extractedItems.length };
-        } else {
-          // If no raw text codes could be parsed, retain index and mark ready for Vision or fallback
-          this.currentPdfName = file.name;
-          return { success: false, count: this.items.length, pagesCount: pdf.numPages };
-        }
+        // Resilient Merged Catalog:
+        // NEVER drop default verified store products when an uploaded PDF has sparse/unparseable text on some pages!
+        const mergedMap = new Map();
+
+        // 1. Always keep verified default store items as baseline
+        this.defaultItems.forEach(it => {
+          if (it.code) mergedMap.set(String(it.code).trim(), it);
+        });
+
+        // 2. Keep any previously imported items in session
+        this.items.forEach(it => {
+          if (it.code) mergedMap.set(String(it.code).trim(), it);
+        });
+
+        // 3. Overlay any newly extracted items from the PDF
+        extractedItems.forEach(it => {
+          if (it.code) mergedMap.set(String(it.code).trim(), it);
+        });
+
+        this.items = Array.from(mergedMap.values());
+        this.rebuildIndex();
+        this.currentPdfName = file.name;
+
+        return {
+          success: true,
+          count: this.items.length,
+          extractedCount: extractedItems.length,
+          pagesCount: pdf.numPages
+        };
       } catch (err) {
         console.error('Error parsing PDF for cheatsheet items:', err);
         return { success: false, error: err };
