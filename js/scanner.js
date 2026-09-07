@@ -380,12 +380,22 @@
 
     /**
      * Continuous Ultra-Fast Multi-Engine Detection Loop
-     * Runs Native BarcodeDetector and Turbo ZXing decodeBitmap with zero frame drop
+     * Throttled to ~14 FPS decode rate with 60 FPS viewfinder for zero UI lag & maximum battery efficiency
      */
     async scanLoop() {
       if (!this.active || !this.videoEl) return;
 
-      if (this.videoEl.readyState >= 2 && !this.isProcessingFrame) {
+      const now = performance.now();
+      if (!this.lastDecodeTime) this.lastDecodeTime = 0;
+      if (now - this.lastDecodeTime < (this.decodeIntervalMs || 70)) {
+        if (this.active) {
+          this.animFrameId = requestAnimationFrame(() => this.scanLoop());
+        }
+        return;
+      }
+      this.lastDecodeTime = now;
+
+      if (this.videoEl.readyState >= 2 && this.videoEl.videoWidth > 0 && !this.isProcessingFrame) {
         this.isProcessingFrame = true;
 
         try {
@@ -404,48 +414,28 @@
                 detectedFormat = best.format || '1D_BARCODE';
               }
             } catch (err) {
-              // Proceed to Pass 2
+              // Fallback to ZXing
             }
           }
 
           // -------------------------------------------------------------
-          // PASS 2: Downscaled High-FPS ZXing Decoder (Sub-15ms)
+          // PASS 2 & 3: High-FPS ZXing Retail Decoder
           // -------------------------------------------------------------
           if (!detectedCode && this.zxingReader && window.ZXing) {
-            try {
-              const vw = this.videoEl.videoWidth || 640;
-              const vh = this.videoEl.videoHeight || 480;
+            const vw = this.videoEl.videoWidth;
+            const vh = this.videoEl.videoHeight;
+            const targetW = Math.min(640, vw);
+            const targetH = Math.round(vh * (targetW / vw));
 
-              // Downscale to optimal 640px width: 10x faster pixel binarization
-              const targetW = Math.min(640, vw);
-              const targetH = Math.round(vh * (targetW / vw));
-
-              if (this.canvasEl.width !== targetW || this.canvasEl.height !== targetH) {
-                this.canvasEl.width = targetW;
-                this.canvasEl.height = targetH;
-              }
-
-              this.ctx.drawImage(this.videoEl, 0, 0, targetW, targetH);
-
-              const lumSource = new window.ZXing.HTMLCanvasElementLuminanceSource(this.canvasEl);
-              const binaryBitmap = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(lumSource));
-              const result = this.zxingReader.decodeBitmap(binaryBitmap);
-
-              if (result && result.getText()) {
-                detectedCode = result.getText();
-                detectedFormat = result.getBarcodeFormat() ? result.getBarcodeFormat().toString() : 'CODE_128';
-              }
-            } catch (e) {
-              // Normal miss
+            if (this.canvasEl.width !== targetW || this.canvasEl.height !== targetH) {
+              this.canvasEl.width = targetW;
+              this.canvasEl.height = targetH;
             }
-          }
 
-          // -------------------------------------------------------------
-          // PASS 3: Center Aiming Reticle Region-of-Interest (Laser Zone)
-          // -------------------------------------------------------------
-          if (!detectedCode && this.zxingReader && window.ZXing && this.canvasEl.width > 0) {
+            this.ctx.drawImage(this.videoEl, 0, 0, targetW, targetH);
+
+            // Pass 2A: Center Aiming Reticle (Highest Hit Probability)
             try {
-              // Extract middle 45% height where laser line scans
               const cw = this.canvasEl.width;
               const ch = this.canvasEl.height;
               const roiH = Math.round(ch * 0.45);
@@ -455,7 +445,6 @@
                 this.roiCanvasEl.width = cw;
                 this.roiCanvasEl.height = roiH;
               }
-
               this.roiCtx.drawImage(this.canvasEl, 0, roiY, cw, roiH, 0, 0, cw, roiH);
 
               const roiLum = new window.ZXing.HTMLCanvasElementLuminanceSource(this.roiCanvasEl);
@@ -468,6 +457,22 @@
               }
             } catch (e) {
               // Normal miss
+            }
+
+            // Pass 2B: Full Frame Fallback
+            if (!detectedCode) {
+              try {
+                const lumSource = new window.ZXing.HTMLCanvasElementLuminanceSource(this.canvasEl);
+                const binaryBitmap = new window.ZXing.BinaryBitmap(new window.ZXing.HybridBinarizer(lumSource));
+                const result = this.zxingReader.decodeBitmap(binaryBitmap);
+
+                if (result && result.getText()) {
+                  detectedCode = result.getText();
+                  detectedFormat = result.getBarcodeFormat() ? result.getBarcodeFormat().toString() : 'CODE_128';
+                }
+              } catch (e) {
+                // Normal miss
+              }
             }
           }
 

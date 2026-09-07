@@ -119,10 +119,11 @@
           </div>
         </div>
 
-        <!-- Scanner Controls & Quick Trim -->
+        <!-- Scanner Controls & Inline Quick Trim -->
         <div class="scanner-action-dock">
           <!-- Primary Scan Toggle Button -->
           <button type="button" class="btn-primary-laser" id="btn-toggle-scanner">
+            <span class="cam-dot-indicator"></span>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
               <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
               <circle cx="12" cy="13" r="4"></circle>
@@ -130,19 +131,20 @@
             <span id="scanner-btn-label">START CAMERA SCANNER</span>
           </button>
 
-          <!-- On-Screen Trailing Trim Dial (Change with 1 tap right on camera view) -->
-          <div class="quick-trim-stepper">
-            <span class="trim-stepper-title">Trailing Digits to Cut:</span>
-            <button type="button" class="btn-step-sm" id="btn-quick-trim-minus">&minus;</button>
-            <span class="quick-trim-display" id="quick-trim-display">0 digits</span>
-            <button type="button" class="btn-step-sm" id="btn-quick-trim-plus">&plus;</button>
-          </div>
-
+          <!-- Compact Aux Toolbar with Inline Micro Trim Stepper -->
           <div class="aux-row">
             <select id="camera-device-select" class="mobile-cam-select" aria-label="Camera Lens">
-              <option value="environment">Back / Rear Camera</option>
+              <option value="environment">Back Camera</option>
               <option value="user">Front Webcam</option>
             </select>
+
+            <!-- Inline Micro Trim Stepper (Saves 50px vertical height!) -->
+            <div class="aux-trim-stepper" title="Trailing Digits to Cut">
+              <span class="aux-trim-label">✂️ Cut:</span>
+              <button type="button" class="btn-step-mini" id="btn-quick-trim-minus" aria-label="Decrease Trim">&minus;</button>
+              <span class="quick-trim-display" id="quick-trim-display">0</span>
+              <button type="button" class="btn-step-mini" id="btn-quick-trim-plus" aria-label="Increase Trim">&plus;</button>
+            </div>
 
             <label class="btn-aux-chip" title="Scan photo">
               <input type="file" id="barcode-image-upload" accept="image/*" style="display: none;">
@@ -151,7 +153,7 @@
             </label>
 
             <button type="button" class="btn-aux-chip" id="btn-simulate-modal">
-              ⚡ Test Scan
+              ⚡ Test
             </button>
           </div>
 
@@ -160,6 +162,113 @@
             <span class="gun-dot"></span>
             <span>Hardware Laser Gun / Bluetooth Wedge Active (Instant)</span>
           </div>
+        </div>
+      </div>
+
+      <!-- ==================================================================
+           MAGIC SCAN RESULT CARD (AI EXPLANATION + CROPPED PDF SNIPPET)
+           Appears immediately below camera viewport for instant visibility
+           ================================================================== -->
+      <div class="mobile-scan-result-card" id="location-hud">
+        
+        <!-- Header -->
+        <div class="result-card-header">
+          <div>
+            <div class="result-badge-label" id="hud-badge-label">📍 PLANOGRAM LOCATION IDENTIFIED</div>
+            <div class="result-section-name" id="hud-section-name">M6 DENIM</div>
+          </div>
+          <div class="result-pos-cluster">
+            <!-- Dynamic New Line Tag -->
+            <span class="badge-new-line" id="hud-newline-badge">🔥 NEW LINE: YES</span>
+            <span class="result-pos-pill" id="hud-pos-badge">POS #1</span>
+            <button type="button" class="btn-close-result" id="btn-close-hud" aria-label="Close">&times;</button>
+          </div>
+        </div>
+
+        <!-- Spec Grid (Dynamic Color Chips & Details) -->
+        <div class="result-spec-grid">
+          <div class="spec-meta-item">
+            <div class="meta-label">BARCODE / CODE</div>
+            <div class="meta-value mono" id="hud-code-val">301081626</div>
+          </div>
+          <div class="spec-meta-item">
+            <div class="meta-label" id="hud-label-second">Signage Price</div>
+            <div class="meta-value mono price" id="hud-price-val">₹899</div>
+          </div>
+          <div class="spec-meta-item">
+            <div class="meta-label" id="hud-label-third">Color / Shade</div>
+            <div class="meta-value" id="hud-color-val">WHITE</div>
+          </div>
+          <div class="spec-meta-item">
+            <div class="meta-label" id="hud-label-fourth">Fixture Slot</div>
+            <div class="meta-value" id="hud-slot-type">Hanger (Denim)</div>
+          </div>
+          <div class="spec-meta-item" id="hud-newline-meta-item">
+            <div class="meta-label">NEW LINE STATUS</div>
+            <div class="meta-value bold" id="hud-newline-val" style="color: #FF8A00;">🔥 YES (Fresh Launch)</div>
+          </div>
+        </div>
+
+        <!-- Gemini AI Advice Box -->
+        <div class="ai-placement-box">
+          <div class="ai-box-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span>GEMINI VISUAL MERCHANDISING INSTRUCTION</span>
+          </div>
+          <div class="ai-box-content" id="ai-placement-text">
+            Generating visual placement advice...
+          </div>
+        </div>
+
+        <!-- Dual Visual Presentation: Cropped Garment + Cropped Floor Fixture Diagram with Animated Radar Beacon -->
+        <div class="dual-visual-section" id="hud-dual-visual-section">
+          <!-- 1. Garment Snippet -->
+          <div class="visual-col">
+            <div class="visual-header">
+              <span class="visual-title">GARMENT SNIPPET</span>
+              <span class="visual-badge" id="hud-cropped-header-title">PDF CROPPED</span>
+            </div>
+            <div class="visual-body">
+              <div class="pdf-cropped-container">
+                <img id="cropped-product-img" class="cropped-garment-image" alt="Cropped Garment Snippet">
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Floor / Fixture Diagram with Animated Beacon Overlay ("Ye Yahan Pe Lagega") -->
+          <div class="visual-col">
+            <div class="visual-header">
+              <span class="visual-title">FLOOR FIXTURE DIAGRAM</span>
+              <span class="visual-badge beacon-badge" id="hud-floor-slot-title">📍 SLOT #1 (Hanger)</span>
+            </div>
+            <div class="visual-body">
+              <div class="fixture-beacon-container" id="fixture-beacon-container">
+                <img id="cropped-fixture-img" class="cropped-fixture-image" alt="Floor Fixture Diagram">
+                <!-- Animated Radar Beacon Point Overlay -->
+                <div class="beacon-point" id="hud-beacon-point" style="display: none;">
+                  <div class="beacon-pulse-wave"></div>
+                  <div class="beacon-pulse-wave wave-2"></div>
+                  <div class="beacon-dot"></div>
+                  <div class="beacon-marker-badge" id="hud-beacon-badge">YE YAHAN LAGEGA</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Full Rack Architecture Diagram -->
+        <div id="hud-visual-rack-wrap"></div>
+
+        <!-- Troubleshooting Quick Action Row (Shown when item is NOT found) -->
+        <div class="hud-action-row" id="hud-not-found-actions" style="display: none;">
+          <button type="button" class="btn-hud-action" id="btn-hud-adjust-trim">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+            Adjust Trim Dial
+          </button>
+          <button type="button" class="btn-hud-action" id="btn-hud-upload-pdf">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Upload PDF / Slide
+          </button>
         </div>
       </div>
 
@@ -198,112 +307,6 @@
           <button type="button" class="chip-sample-code preset-code-btn" data-code="301057130" data-format="CODE_128">
             <span class="chip-tag">M10 Pos 1</span>
             <span class="chip-num">301057130</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- ==================================================================
-           MAGIC SCAN RESULT CARD (AI EXPLANATION + CROPPED PDF SNIPPET)
-           ================================================================== -->
-        <div class="mobile-scan-result-card" id="location-hud">
-          
-          <!-- Header -->
-          <div class="result-card-header">
-            <div>
-              <div class="result-badge-label" id="hud-badge-label">📍 PLANOGRAM LOCATION IDENTIFIED</div>
-              <div class="result-section-name" id="hud-section-name">M6 DENIM</div>
-            </div>
-            <div class="result-pos-cluster">
-              <!-- Dynamic New Line Tag -->
-              <span class="badge-new-line" id="hud-newline-badge">🔥 NEW LINE: YES</span>
-              <span class="result-pos-pill" id="hud-pos-badge">POS #1</span>
-              <button type="button" class="btn-close-result" id="btn-close-hud" aria-label="Close">&times;</button>
-            </div>
-          </div>
-
-          <!-- 1. AI Placement Explanation Box -->
-          <div class="ai-speech-box" id="hud-ai-speech-box">
-            <div class="ai-speech-header">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12A10 10 0 0 1 12 2z"></path></svg>
-              <span id="hud-ai-advisor-title">GEMINI AI PLACEMENT ADVISOR</span>
-            </div>
-            <div class="ai-speech-content" id="ai-placement-text">
-              Place this in <strong>M6 DENIM</strong> at <strong>Position #1</strong> (Top hanging rail, 1st hanger on left). Signage is <strong>₹899</strong> and Color is <strong>WHITE</strong>. Instruction: Layer 1st piece of Option 1 with Option 3.
-            </div>
-          </div>
-
-          <!-- Key Specs Grid -->
-          <div class="result-meta-grid" id="hud-meta-grid">
-            <div class="meta-item">
-              <span class="meta-label">Product Code</span>
-              <span class="meta-value" id="hud-code-val">301081626</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label" id="hud-label-second">Signage Price</span>
-              <span class="meta-value price" id="hud-price-val">₹899</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label" id="hud-label-third">Color / Shade</span>
-              <span class="meta-value" id="hud-color-val">WHITE</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label" id="hud-label-fourth">Fixture Slot</span>
-              <span class="meta-value" id="hud-slot-type">Hanger 1</span>
-            </div>
-            <div class="meta-item" id="hud-newline-meta-item">
-              <span class="meta-label">Assortment Line</span>
-              <span class="meta-value new-line-val" id="hud-newline-val">🔥 YES (NEW)</span>
-            </div>
-          </div>
-
-          <!-- 2. DUAL VISUAL VIEW: GARMENT SNIPPET + ANIMATED FLOOR FIXTURE DIAGRAM (SIDE-BY-SIDE) -->
-          <div class="hud-dual-visual-section" id="hud-dual-visual-section">
-            <div class="hud-visual-split-grid">
-              <!-- Left Panel: Cropped Garment Snippet from PDF -->
-              <div class="visual-panel-card garment-panel">
-                <div class="visual-panel-topbar">
-                  <span class="panel-pill tag-garment">GARMENT TILE</span>
-                  <span class="panel-subtitle" id="pdf-cropped-header-label">PDF CROP</span>
-                </div>
-                <div class="visual-panel-content" id="pdf-cropped-img-wrap">
-                  <img id="cropped-product-img" class="cropped-doc-image" alt="Cropped Product Snippet">
-                </div>
-              </div>
-
-              <!-- Right Panel (Bagal Mein): Floor / Fixture Diagram with Animated Blinking Radar Beacon -->
-              <div class="visual-panel-card fixture-panel">
-                <div class="visual-panel-topbar">
-                  <span class="panel-pill tag-fixture">FLOOR RACK LOCATION</span>
-                  <span class="panel-subtitle blink-beacon-text" id="hud-floor-slot-title">📍 BLINKING TARGET</span>
-                </div>
-                <div class="visual-panel-content fixture-wrap" id="hud-fixture-img-wrap">
-                  <div class="fixture-beacon-container" id="fixture-beacon-container">
-                    <img id="cropped-fixture-img" class="cropped-fixture-image" alt="Floor Fixture Diagram">
-                    <!-- Animated Radar Beacon Point Overlay -->
-                    <div class="beacon-point" id="hud-beacon-point" style="display: none;">
-                      <div class="beacon-pulse-wave"></div>
-                      <div class="beacon-pulse-wave wave-2"></div>
-                      <div class="beacon-dot"></div>
-                      <div class="beacon-marker-badge" id="hud-beacon-badge">YE YAHAN LAGEGA</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Interactive Full Rack Architecture Diagram -->
-          <div id="hud-visual-rack-wrap"></div>
-
-        <!-- Troubleshooting Quick Action Row (Shown when item is NOT found) -->
-        <div class="hud-action-row" id="hud-not-found-actions" style="display: none;">
-          <button type="button" class="btn-hud-action" id="btn-hud-adjust-trim">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
-            Adjust Trim Dial
-          </button>
-          <button type="button" class="btn-hud-action" id="btn-hud-upload-pdf">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            Upload PDF / Slide
           </button>
         </div>
       </div>

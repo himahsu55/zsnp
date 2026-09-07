@@ -397,7 +397,7 @@ body::before {
 .camera-viewport-shell {
   position: relative;
   width: 100%;
-  height: 270px;
+  height: clamp(190px, 28vh, 225px);
   background: var(--terminal-black);
   overflow: hidden;
   display: flex;
@@ -428,17 +428,33 @@ body::before {
   pointer-events: none;
   z-index: 10;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 8px;
 }
 
 .reticle-box {
-  width: 78%;
-  height: 60%;
+  width: 82%;
+  height: 64%;
   position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 9999px rgba(9, 11, 14, 0.38);
+  border-radius: 6px;
+}
+
+.reticle-guide-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(9, 11, 14, 0.7);
+  backdrop-filter: blur(4px);
+  padding: 3px 12px;
+  border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 0 9999px rgba(9, 11, 14, 0.55);
-  border-radius: 4px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
 }
 
 .corner {
@@ -568,22 +584,22 @@ body::before {
 
 .btn-primary-laser {
   width: 100%;
-  height: 48px;
-  background: var(--laser);
+  height: 46px;
+  background: linear-gradient(135deg, var(--laser) 0%, #E53935 100%);
   border: none;
   border-radius: var(--radius-md);
   color: #FFF;
   font-family: var(--font-heading);
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  box-shadow: 0 4px 12px var(--laser-glow);
-  transition: all 0.15s;
+  box-shadow: 0 4px 14px var(--laser-glow);
+  transition: all 0.15s ease;
 }
 
 .btn-primary-laser:active {
@@ -591,53 +607,82 @@ body::before {
 }
 
 .btn-primary-laser.active {
-  background: var(--ink);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  background: linear-gradient(135deg, #D32F2F 0%, #B71C1C 100%);
+  box-shadow: 0 4px 16px rgba(211, 47, 47, 0.45);
+  color: #FFF;
 }
 
-/* Quick Trimmer Stepper on Scanner Screen */
-.quick-trim-stepper {
-  display: flex;
+.btn-primary-laser .cam-dot-indicator {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #FFF;
+  display: inline-block;
+  opacity: 0.85;
+}
+
+.btn-primary-laser.active .cam-dot-indicator {
+  background: #FFF;
+  box-shadow: 0 0 8px #FFF;
+  animation: pulseLaserDot 1s infinite alternate;
+}
+
+@keyframes pulseLaserDot {
+  0% { transform: scale(0.85); opacity: 0.6; }
+  100% { transform: scale(1.3); opacity: 1; }
+}
+
+/* Compact Inline Micro Trim Stepper inside Aux Row */
+.aux-trim-stepper {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 4px;
   background: var(--surface-subtle);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  padding: 6px 10px;
+  padding: 3px 6px;
+  flex-shrink: 0;
 }
 
-.trim-stepper-title {
+.aux-trim-label {
   font-family: var(--font-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--muted);
 }
 
-.btn-step-sm {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
+.btn-step-mini {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
   background: var(--card);
   border: 1px solid var(--line);
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  color: var(--ink);
+  line-height: 1;
+  padding: 0;
+  transition: all 0.1s;
 }
 
-.btn-step-sm:active {
-  background: var(--ink);
+.btn-step-mini:active {
+  background: var(--laser);
   color: #FFF;
+  border-color: var(--laser);
 }
 
 .quick-trim-display {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--laser);
+  min-width: 14px;
+  text-align: center;
 }
 
 .aux-row {

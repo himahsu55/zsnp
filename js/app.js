@@ -233,7 +233,7 @@
     // 5. Quick Trimmer on Scanner Screen
     function updateQuickTrimDisplay() {
       const n = trimmer.getTrim();
-      if (el.quickTrimDisplay) el.quickTrimDisplay.textContent = `${n} digit${n === 1 ? '' : 's'}`;
+      if (el.quickTrimDisplay) el.quickTrimDisplay.textContent = n;
     }
 
     if (el.btnQuickTrimMinus) {
@@ -417,7 +417,7 @@
         switchTab('tab-scanner');
       }
 
-      el.locationHud.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      el.locationHud.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // 7B. Display AI Diagnostic Feedback (Item Not Found in Document)
