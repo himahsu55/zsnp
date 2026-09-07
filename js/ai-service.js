@@ -68,7 +68,7 @@
       return (
         `📍 **Hang/Place in ${product.section}:**\n` +
         `• **Target Slot:** **Position #${product.position}** (${product.slotType || 'Display Slot'})\n` +
-        `• **Product:** ${product.color} &bull; Signage: **₹${product.signage}**\n` +
+        `• **Product:** ${product.color} • Signage: **₹${product.signage}**\n` +
         (product.remarks ? `• **Display Rule:** *${product.remarks}*\n` : '') +
         (product.capacity ? `• **Rack Capacity:** ${product.capacity}` : '')
       );

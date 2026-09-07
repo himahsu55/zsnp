@@ -390,12 +390,12 @@
 
       // Position Animated Radar Beacon
       if (el.hudBeaconPoint) {
-        const coords = planogram.getFixtureBeaconCoordinates 
-          ? planogram.getFixtureBeaconCoordinates(product)
-          : { xPct: 50, yPct: 45 };
+        const coords = (planogram.getFixtureBeaconCoordinates && planogram.getFixtureBeaconCoordinates(product)) || { x: 50, y: 50, xPct: 50, yPct: 50 };
+        const x = coords.xPct != null ? coords.xPct : (coords.x != null ? coords.x : 50);
+        const y = coords.yPct != null ? coords.yPct : (coords.y != null ? coords.y : 50);
         
-        el.hudBeaconPoint.style.left = `${coords.xPct}%`;
-        el.hudBeaconPoint.style.top = `${coords.yPct}%`;
+        el.hudBeaconPoint.style.left = `${x}%`;
+        el.hudBeaconPoint.style.top = `${y}%`;
         el.hudBeaconPoint.style.display = 'flex';
 
         if (el.hudBeaconBadge) {
@@ -417,7 +417,7 @@
         switchTab('tab-scanner');
       }
 
-      el.locationHud.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.locationHud.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     // 7B. Display AI Diagnostic Feedback (Item Not Found in Document)
@@ -1312,6 +1312,8 @@
   function formatMarkdown(text) {
     if (!text) return '';
     return escapeHtml(text)
+      .replace(/&amp;bull;/g, '•')
+      .replace(/&amp;nbsp;/g, ' ')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
