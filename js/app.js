@@ -838,35 +838,11 @@
       el.imageUpload.addEventListener('change', async (e) => {
         if (!e.target.files || e.target.files.length === 0) return;
         const file = e.target.files[0];
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        img.onload = async () => {
-          showToast('Analyzing photo barcode...', 'info');
-          if ('BarcodeDetector' in window) {
-            try {
-              const detector = new window.BarcodeDetector();
-              const codes = await detector.detect(img);
-              if (codes && codes.length > 0) {
-                handleScanEvent(codes[0].rawValue, codes[0].format);
-                URL.revokeObjectURL(img.src);
-                return;
-              }
-            } catch (err) {}
-          }
-          if (window.ZXing) {
-            try {
-              const reader = new window.ZXing.BrowserMultiFormatReader();
-              const res = await reader.decodeFromImageElement(img);
-              if (res) {
-                handleScanEvent(res.getText(), res.getBarcodeFormat().toString());
-                URL.revokeObjectURL(img.src);
-                return;
-              }
-            } catch (err) {}
-          }
-          showToast('No barcode found in photo', 'error');
-          URL.revokeObjectURL(img.src);
-        };
+        showToast('Analyzing photo barcode...', 'info');
+        const success = await scanner.decodeImageFile(file);
+        if (!success) {
+          showToast('No clear barcode detected in photo. Ensure tag is flat and well-lit.', 'error');
+        }
         e.target.value = '';
       });
     }
