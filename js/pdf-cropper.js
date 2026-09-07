@@ -204,21 +204,37 @@
           cropW = boxWidth * 1.3;
           cropH = boxHeight * 1.25;
         } else {
-          // Fallback: Grid layout math based on position (5 columns per row, wrapped & clamped)
-          const pos = Math.max(1, parseInt(product.position, 10) || 1);
-          const colCount = 5;
-          const col = (pos - 1) % colCount;
-          const row = Math.min(2, Math.floor((pos - 1) / colCount));
+          // Fixture-Aware 5-Column Grid Mapping for Retail Cheatsheet Slides:
+          // Standard cheatsheet slide template (1080px base width):
+          // Left side (0 to 25.4% W) is the rack diagram & legends.
+          // Right side (25.4% to 99% W) has 5 equal columns: Col 0 to Col 4 (width = 0.1472 * W).
+          // Row height is fixed to the garment tile proportion: W * (5 / 24) ≈ 0.2083 * W.
+          const pNum = product.page || 1;
+          const pos = parseInt(product.position, 10);
 
-          const gridStartX = W * 0.26;
-          const gridWidth = W * 0.73;
-          const cellW = gridWidth / colCount;
-          const cellH = H * 0.31;
+          // Page 2 (M8) positions start at 23; other pages start at 1.
+          const basePos = (pNum === 2) ? 23 : 1;
+          const index = (!isNaN(pos) && pos >= basePos) ? (pos - basePos) : 0;
 
-          cropX = gridStartX + (col * cellW);
-          cropY = (H * 0.05) + (row * cellH);
-          cropW = cellW * 0.96;
-          cropH = cellH * 0.94;
+          let col = index % 5;
+          let row = Math.floor(index / 5);
+
+          // Handle cut-size trays or bottom trays if position is 0
+          if ((product.cutSize === 'YES' || pos === 0) && (pNum === 3 || pNum === 5 || pNum === 6)) {
+            row = Math.max(3, Math.floor(H / (W * (5.0 / 24.0))) - 1);
+            col = (product.code === '301077491' || product.code === '301073491') ? 1 : 0;
+          }
+
+          col = Math.max(0, Math.min(4, col));
+          row = Math.max(0, row);
+
+          const colWidth = W * 0.1472;
+          const rowHeight = Math.min(H * 0.35, Math.max(H * 0.16, W * (5.0 / 24.0)));
+
+          cropX = (0.254 + col * 0.1472) * W;
+          cropY = row * rowHeight;
+          cropW = colWidth;
+          cropH = rowHeight;
         }
 
         // Safety-clamp dimensions: minimum 40px, strictly inside page bounds
