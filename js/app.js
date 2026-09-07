@@ -339,7 +339,7 @@
       if (el.hudCroppedHeaderTitle) {
         el.hudCroppedHeaderTitle.textContent = hasRealDoc
           ? 'CROPPED FROM PDF'
-          : 'AI TILE';
+          : 'CATALOG SNIPPET';
       }
 
       // Hide troubleshooting actions
@@ -399,7 +399,7 @@
         el.hudBeaconPoint.style.display = 'flex';
 
         if (el.hudBeaconBadge) {
-          el.hudBeaconBadge.textContent = `📍 YE YAHAN PE LAGEGA • SLOT #${product.position}`;
+          el.hudBeaconBadge.textContent = `📍 YE YAHAN LAGEGA • #${product.position}`;
         }
         if (el.hudFloorSlotTitle) {
           el.hudFloorSlotTitle.textContent = `📍 SLOT #${product.position} (${product.slotType || 'Slot'})`;

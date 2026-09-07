@@ -11,7 +11,49 @@
     constructor() {
       this.renderedPages = new Map(); // pageNum -> { canvas, textItems, viewport }
       this.currentPdfDoc = null;
-      this.dpiScale = 2.0; // High resolution rendering for crisp text & photos
+      this.dpiScale = 1.5; // Balanced high resolution with mobile memory safety
+      this.preloadedSlides = new Map(); // pageNum -> Image
+      this.preloadedRacks = new Map();
+      this.preloadDefaultAssets();
+    }
+
+    preloadDefaultAssets() {
+      if (typeof window === 'undefined' || typeof Image === 'undefined') return;
+      for (let p = 1; p <= 6; p++) {
+        const slideImg = new Image();
+        slideImg.crossOrigin = 'anonymous';
+        slideImg.onload = () => this.preloadedSlides.set(p, slideImg);
+        slideImg.src = `sample-data/slides/page_${p}.jpg`;
+
+        const rackImg = new Image();
+        rackImg.crossOrigin = 'anonymous';
+        rackImg.onload = () => this.preloadedRacks.set(p, rackImg);
+        rackImg.src = `sample-data/racks/rack_p${p}.png`;
+      }
+    }
+
+    async getSlideImage(pageNum = 1) {
+      const p = Math.max(1, Math.min(6, parseInt(pageNum, 10) || 1));
+      if (this.preloadedSlides.has(p)) {
+        const img = this.preloadedSlides.get(p);
+        if (img && (img.complete || img.naturalWidth > 0)) return img;
+      }
+      return new Promise((resolve) => {
+        if (typeof Image === 'undefined') return resolve(null);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          this.preloadedSlides.set(p, img);
+          resolve(img);
+        };
+        img.onerror = () => resolve(null);
+        img.src = `sample-data/slides/page_${p}.jpg`;
+      });
+    }
+
+    getRackImageUrl(pageNum = 1) {
+      const p = Math.max(1, Math.min(6, parseInt(pageNum, 10) || 1));
+      return `sample-data/racks/rack_p${p}.png`;
     }
 
     async loadPdfDocument(arrayBuffer) {
@@ -24,11 +66,10 @@
         this.renderedPages.clear();
         this.currentPdfDoc = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-        // Render all pages in background for instant crop on scan
-        for (let pageNum = 1; pageNum <= this.currentPdfDoc.numPages; pageNum++) {
-          await this.renderPage(pageNum);
-        }
-        console.log(`PdfCropper: Rendered ${this.currentPdfDoc.numPages} pages for visual extraction.`);
+        // Render page 1 initially to keep mobile memory light and fast;
+        // remaining pages will be rendered lazily on demand when scanned or viewed!
+        await this.renderPage(1);
+        console.log(`PdfCropper: Loaded ${this.currentPdfDoc.numPages} pages (page 1 primed).`);
       } catch (err) {
         console.error('PdfCropper failed to load document:', err);
       }
@@ -46,6 +87,8 @@
         canvas.width = imgElement.naturalWidth || imgElement.width || 1200;
         canvas.height = imgElement.naturalHeight || imgElement.height || 800;
         const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(imgElement, 0, 0, canvas.width, canvas.height);
 
         const pageData = {
@@ -75,7 +118,7 @@
 
     getPageCount() {
       if (this.currentPdfDoc) return this.currentPdfDoc.numPages;
-      return this.renderedPages.size || 0;
+      return this.renderedPages.size || 6;
     }
 
     getPageCanvas(pageNum = 1) {
@@ -96,16 +139,30 @@
         canvas.height = viewport.height;
         const ctx = canvas.getContext('2d');
 
-        await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        // Solid white background before rendering PDF
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        await page.render({
+          canvasContext: ctx,
+          viewport: viewport,
+          background: 'rgb(255, 255, 255)'
+        }).promise;
 
         // Get text tokens and their bounding coordinates
-        const textContent = await page.getTextContent();
+        let textItems = [];
+        try {
+          const textContent = await page.getTextContent();
+          textItems = textContent.items || [];
+        } catch (tErr) {
+          console.warn('Text content extraction skipped for page', pageNum);
+        }
 
         const pageData = {
           pageNum,
           canvas,
           viewport,
-          textItems: textContent.items
+          textItems
         };
 
         this.renderedPages.set(pageNum, pageData);
@@ -125,102 +182,79 @@
       if (!product) return null;
 
       try {
-        const pageNum = product.page || 1;
+        const pageNum = Math.max(1, Math.min(6, parseInt(product.page, 10) || 1));
 
+        let source = null;
+        let W = 0, H = 0;
+
+        // Check if custom uploaded PDF page canvas is available
         let pageData = this.renderedPages.get(pageNum);
         if (!pageData && this.currentPdfDoc) {
           pageData = await this.renderPage(pageNum);
         }
 
-        if (!pageData || !pageData.canvas) {
-          // Return a dynamically generated visual card if PDF canvas is not active
+        if (pageData && pageData.canvas && pageData.canvas.width > 0) {
+          source = pageData.canvas;
+          W = pageData.canvas.width;
+          H = pageData.canvas.height;
+        }
+
+        // If no custom PDF canvas or canvas is empty, use authentic pre-rendered cheatsheet slide!
+        if (!source) {
+          const slideImg = await this.getSlideImage(pageNum);
+          if (slideImg && (slideImg.naturalWidth || slideImg.width)) {
+            source = slideImg;
+            W = slideImg.naturalWidth || slideImg.width;
+            H = slideImg.naturalHeight || slideImg.height;
+          }
+        }
+
+        if (!source || W <= 0 || H <= 0) {
           return this.generateFallbackSnippet(product);
         }
 
-        const { canvas, viewport, textItems } = pageData;
-        const W = canvas.width || 800;
-        const H = canvas.height || 600;
+        let cropX = 0, cropY = 0, cropW = 0, cropH = 0;
 
-        if (W <= 0 || H <= 0) {
-          return this.generateFallbackSnippet(product);
-        }
-
+        // Try text token match if available in custom PDF
         const cleanCode = String(product.code || '').trim();
         const codeDigits = cleanCode.replace(/\D/g, '');
         let matchedToken = null;
 
-        // 1. Search for single text token matching code
-        if (Array.isArray(textItems) && textItems.length > 0) {
-          for (let i = 0; i < textItems.length; i++) {
-            const item = textItems[i];
+        if (pageData && Array.isArray(pageData.textItems) && pageData.textItems.length > 0) {
+          for (let i = 0; i < pageData.textItems.length; i++) {
+            const item = pageData.textItems[i];
             const str = (item.str || '').trim();
             if (str && (str.includes(cleanCode) || (codeDigits && str.replace(/\D/g, '').includes(codeDigits)))) {
               matchedToken = item;
               break;
             }
           }
-
-          // 2. Search across multi-token window if barcode digits were split across adjacent text tokens
-          if (!matchedToken && cleanCode.length >= 4) {
-            for (let i = 0; i < textItems.length; i++) {
-              let combinedStr = '';
-              let combinedDigits = '';
-              for (let j = i; j < Math.min(i + 6, textItems.length); j++) {
-                const s = textItems[j].str || '';
-                combinedStr += s;
-                combinedDigits += s.replace(/\D/g, '');
-                if (combinedStr.includes(cleanCode) || (codeDigits && combinedDigits.includes(codeDigits))) {
-                  matchedToken = textItems[i];
-                  break;
-                }
-              }
-              if (matchedToken) break;
-            }
-          }
         }
 
-        let cropX = 0, cropY = 0, cropW = 0, cropH = 0;
-
         if (matchedToken && Array.isArray(matchedToken.transform) && matchedToken.transform.length >= 6) {
-          // PDF coordinates have origin at bottom-left: transform[4] is X, transform[5] is Y from bottom (points)
           const pdfX = matchedToken.transform[4];
           const pdfY = matchedToken.transform[5];
-
-          // Unscaled PDF page height in points
-          const unscaledH = (viewport && viewport.height)
-            ? (viewport.height / (this.dpiScale || 1))
+          const unscaledH = (pageData.viewport && pageData.viewport.height)
+            ? (pageData.viewport.height / (this.dpiScale || 1))
             : (H / (this.dpiScale || 1));
-
-          // Convert to canvas top-left coordinates:
           const tx = pdfX * (this.dpiScale || 1);
           const ty = (unscaledH - pdfY) * (this.dpiScale || 1);
-
-          // Bounding box: include the product photo above the code and the metadata box
           const boxWidth = Math.max(80, W * 0.17);
           const boxHeight = Math.max(100, H * 0.32);
-
           cropX = tx - (boxWidth * 0.15);
           cropY = ty - (boxHeight * 0.65);
           cropW = boxWidth * 1.3;
           cropH = boxHeight * 1.25;
         } else {
-          // Fixture-Aware 5-Column Grid Mapping for Retail Cheatsheet Slides:
-          // Standard cheatsheet slide template (1080px base width):
-          // Left side (0 to 25.4% W) is the rack diagram & legends.
-          // Right side (25.4% to 99% W) has 5 equal columns: Col 0 to Col 4 (width = 0.1472 * W).
-          // Row height is fixed to the garment tile proportion: W * (5 / 24) ≈ 0.2083 * W.
-          const pNum = product.page || 1;
+          // Precise Fixture-Aware 5-Column Grid Mapping for Retail Cheatsheet Slides:
           const pos = parseInt(product.position, 10);
-
-          // Page 2 (M8) positions start at 23; other pages start at 1.
-          const basePos = (pNum === 2) ? 23 : 1;
+          const basePos = (pageNum === 2) ? 23 : 1;
           const index = (!isNaN(pos) && pos >= basePos) ? (pos - basePos) : 0;
 
           let col = index % 5;
           let row = Math.floor(index / 5);
 
-          // Handle cut-size trays or bottom trays if position is 0
-          if ((product.cutSize === 'YES' || pos === 0) && (pNum === 3 || pNum === 5 || pNum === 6)) {
+          if ((product.cutSize === 'YES' || pos === 0) && (pageNum === 3 || pageNum === 5 || pageNum === 6)) {
             row = Math.max(3, Math.floor(H / (W * (5.0 / 24.0))) - 1);
             col = (product.code === '301077491' || product.code === '301073491') ? 1 : 0;
           }
@@ -237,13 +271,12 @@
           cropH = rowHeight;
         }
 
-        // Safety-clamp dimensions: minimum 40px, strictly inside page bounds
+        // Clamp dimensions safely
         cropX = Math.max(0, Math.min(cropX, W - 40));
         cropY = Math.max(0, Math.min(cropY, H - 40));
         cropW = Math.max(40, Math.min(cropW, W - cropX));
         cropH = Math.max(40, Math.min(cropH, H - cropY));
 
-        // Render crop to destination canvas
         const destCanvas = document.createElement('canvas');
         destCanvas.width = Math.round(cropW);
         destCanvas.height = Math.round(cropH);
@@ -253,17 +286,26 @@
           return this.generateFallbackSnippet(product);
         }
 
-        // Draw cropped area from full page canvas
+        // CRITICAL: Always fill with solid white background FIRST!
+        destCtx.fillStyle = '#FFFFFF';
+        destCtx.fillRect(0, 0, destCanvas.width, destCanvas.height);
+
+        // Draw cropped area with high quality smoothing
+        if (destCtx.imageSmoothingEnabled !== undefined) {
+          destCtx.imageSmoothingEnabled = true;
+          destCtx.imageSmoothingQuality = 'high';
+        }
+
         destCtx.drawImage(
-          canvas,
+          source,
           Math.round(cropX), Math.round(cropY), Math.round(cropW), Math.round(cropH),
           0, 0, Math.round(cropW), Math.round(cropH)
         );
 
         // Add thin subtle laser border on the cropped piece
         destCtx.strokeStyle = '#FF473A';
-        destCtx.lineWidth = 4;
-        destCtx.strokeRect(0, 0, destCanvas.width, destCanvas.height);
+        destCtx.lineWidth = 3;
+        destCtx.strokeRect(1.5, 1.5, destCanvas.width - 3, destCanvas.height - 3);
 
         return destCanvas.toDataURL('image/png');
       } catch (err) {
@@ -277,46 +319,47 @@
      * Focused specifically on the floor rack illustration, slots, and capacity labels
      */
     async cropFixtureSnippet(pageNum = 1) {
-      const pageData = this.renderedPages.get(pageNum);
-      if (!pageData || !pageData.canvas) {
-        return this.generateFallbackFixtureSnippet(pageNum);
+      const p = Math.max(1, Math.min(6, parseInt(pageNum, 10) || 1));
+
+      // 1. If custom PDF document is uploaded and page is rendered, try cropping from PDF canvas
+      const pageData = this.renderedPages.get(p);
+      if (pageData && pageData.canvas && pageData.canvas.width > 0) {
+        const { canvas } = pageData;
+        const W = canvas.width;
+        const H = canvas.height;
+
+        const cropX = 0;
+        const cropY = 0;
+        const cropW = Math.round(W * 0.254);
+
+        let cropH;
+        if (p === 1 || p === 2 || p === 4) {
+          cropH = Math.round(H * 0.48);
+        } else if (p === 3) {
+          cropH = Math.round(H * 0.38);
+        } else if (p === 5) {
+          cropH = Math.round(H * 0.42);
+        } else if (p === 6) {
+          cropH = Math.round(H * 0.36);
+        } else {
+          cropH = Math.round(Math.min(H * 0.50, W * 0.35));
+        }
+
+        const destCanvas = document.createElement('canvas');
+        destCanvas.width = cropW;
+        destCanvas.height = cropH;
+        const destCtx = destCanvas.getContext('2d');
+
+        if (destCtx) {
+          destCtx.fillStyle = '#FFFFFF';
+          destCtx.fillRect(0, 0, cropW, cropH);
+          destCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+          return destCanvas.toDataURL('image/png');
+        }
       }
 
-      const { canvas } = pageData;
-      const W = canvas.width;
-      const H = canvas.height;
-
-      // Left column contains the fixture illustration:
-      const cropX = 0;
-      const cropY = 0;
-      const cropW = Math.round(W * 0.254);
-
-      // Clean height based on page aspect ratio to exclude blank CHEATSHEET box
-      let cropH;
-      if (pageNum === 1 || pageNum === 2 || pageNum === 4) {
-        cropH = Math.round(H * 0.48);
-      } else if (pageNum === 3) {
-        cropH = Math.round(H * 0.38);
-      } else if (pageNum === 5) {
-        cropH = Math.round(H * 0.42);
-      } else if (pageNum === 6) {
-        cropH = Math.round(H * 0.36);
-      } else {
-        cropH = Math.round(Math.min(H * 0.50, W * 0.35));
-      }
-
-      const destCanvas = document.createElement('canvas');
-      destCanvas.width = cropW;
-      destCanvas.height = cropH;
-      const destCtx = destCanvas.getContext('2d');
-
-      destCtx.drawImage(
-        canvas,
-        cropX, cropY, cropW, cropH,
-        0, 0, cropW, cropH
-      );
-
-      return destCanvas.toDataURL('image/png');
+      // 2. Guaranteed clean authentic floor fixture diagram
+      return this.getRackImageUrl(p);
     }
 
     // Backwards-compatible alias
