@@ -31,6 +31,7 @@
     const planogram = new window.PlanogramEngine();
     const ai = new window.AiService(planogram);
     const cropper = new window.PdfCropper();
+    cropper.setAiService(ai);
     const db = new window.DbSync();
 
     window.App = { state, trimmer, scanner, planogram, ai, cropper, db };
@@ -417,7 +418,9 @@
         switchTab('tab-scanner');
       }
 
-      el.locationHud.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setTimeout(() => {
+        el.locationHud.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
     }
 
     // 7B. Display AI Diagnostic Feedback (Item Not Found in Document)
@@ -1213,6 +1216,20 @@
               }
             }).catch(console.warn);
           }
+
+          // 4. Proactive AI Vision Cropping for New Lines & Active Pages
+          if (ai.hasApiKey()) {
+            const allItems = planogram.getAllItems();
+            const pagesToWarm = Array.from(new Set(allItems.map(it => it.page || 1))).slice(0, 4);
+            (async () => {
+              for (const p of pagesToWarm) {
+                const pItems = allItems.filter(it => (it.page || 1) === p);
+                await cropper.analyzePageWithAI(p, pItems);
+              }
+              // Refresh thumbnails in New Lines tab if open
+              renderNewLinesScreen();
+            })().catch(console.warn);
+          }
         }
 
         if (el.aiExtractProgress) el.aiExtractProgress.style.display = 'none';
@@ -1497,13 +1514,25 @@
 
   function formatMarkdown(text) {
     if (!text) return '';
-    return escapeHtml(text)
+    let html = escapeHtml(text)
       .replace(/&amp;bull;/g, '•')
       .replace(/&amp;nbsp;/g, ' ')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\n/g, '<br>');
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Convert ### headings into structured glassmorphic cards/headers
+    html = html.replace(/(?:^|<br>|\n)###\s*(📍\s*KAHAN\s*LAGEGA[^\n<]*)/gi, '<div class="ai-vm-card kahan-card"><div class="ai-vm-badge kahan-badge">📍 KAHAN LAGEGA (Where to Place)</div><div class="ai-vm-body">');
+    html = html.replace(/(?:^|<br>|\n)###\s*(👔\s*KAISE\s*LAGEGA[^\n<]*)/gi, '</div></div><div class="ai-vm-card kaise-card"><div class="ai-vm-badge kaise-badge">👔 KAISE LAGEGA (How to Display)</div><div class="ai-vm-body">');
+    html = html.replace(/(?:^|<br>|\n)###\s*(💡\s*AI\s*(?:VM\s*)?TIPS[^\n<]*)/gi, '</div></div><div class="ai-vm-card tips-card"><div class="ai-vm-badge tips-badge">💡 AI VM TIPS &amp; RULES (PDF Research)</div><div class="ai-vm-body">');
+    html = html.replace(/(?:^|<br>|\n)###\s*([^\n<]+)/gi, '</div></div><div class="ai-vm-card"><div class="ai-vm-badge">$1</div><div class="ai-vm-body">');
+
+    if (html.includes('<div class="ai-vm-card')) {
+      html += '</div></div>';
+    }
+
+    html = html.replace(/\n/g, '<br>');
+    return html;
   }
 
   function showToast(message, type = 'info') {

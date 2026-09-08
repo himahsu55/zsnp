@@ -12,6 +12,7 @@
       this.planogramEngine = planogramEngine;
       this.apiKey = localStorage.getItem('scandock_gemini_api_key') || '';
       this.model = 'gemini-2.5-flash';
+      this.aiMetaMap = new Map(); // code -> { kahan_lagega, kaise_lagega, tips, box_2d, ... }
     }
 
     setApiKey(key) {
@@ -34,43 +35,82 @@
     /**
      * Generates a conversational placement explanation when a barcode is scanned.
      * Tells the staff: exactly what it is, which fixture to go to, which hanger/shelf to place it on, and any layering rules.
+     * Output format:
+     * - 📍 KAHAN LAGEGA (Where to Place)
+     * - 👔 KAISE LAGEGA (How to Display)
+     * - 💡 AI VM TIPS & RULES (PDF Research)
      */
     async explainPlacement(scannedCode, product) {
       if (!product) {
         return `⚠️ **Item Not in Active Cheatsheet:** Product code \`${scannedCode}\` was not found in the current store planogram. Please verify the code or check if a new PDF cheatsheet needs to be uploaded.`;
       }
 
-      // If user has Gemini API key, generate dynamic AI placement guidance
+      const cleanCode = String(product.code || scannedCode).trim();
+      const meta = this.aiMetaMap.get(cleanCode);
+      const isHanger = (product.slotType || '').toLowerCase().includes('hanger') || Number(product.position) <= 4;
+      const isNewLine = (product.newLine || '').toUpperCase() === 'YES';
+
+      // 1. If we already have rich AI metadata extracted from PDF Vision for this product
+      if (meta && (meta.kahan_lagega || meta.kaise_lagega || meta.tips)) {
+        return (
+          `### 📍 KAHAN LAGEGA (Where to Place)\n` +
+          `• **Fixture & Section**: **${product.section}** (Cheatsheet Page ${product.page})\n` +
+          `• **Target Slot**: **Position #${product.position}** (${product.slotType || (isHanger ? 'Hanging Rail' : 'Shelf Stack')})\n` +
+          `• **Location Advice**: ${meta.kahan_lagega || `Fixture ${product.section}, Slot #${product.position}`}\n\n` +
+          `### 👔 KAISE LAGEGA (How to Display)\n` +
+          `• **Display Style**: ${meta.kaise_lagega || (isHanger ? 'Hanging presentation — hook facing left, garment face-out, buttoned/zipped' : 'Shelf folded stack — size sticker visible on front fold')}\n` +
+          `• **Size Sequence**: Arrange sizes Small to XL from front-to-back (or left-to-right)\n\n` +
+          `### 💡 AI VM TIPS & RULES (PDF Research)\n` +
+          `• **Assortment Status**: ${isNewLine ? '🔥 **FRESH NEW LINE LAUNCH** — High-visibility front-facing placement' : '📦 Core Repeat Line'}\n` +
+          `• **Price Signage**: Ensure **₹${product.signage}** talker card is centered at slot\n` +
+          `• **Guidelines & Capacity**: ${meta.tips || product.remarks || (isHanger ? '4–6 Units per face-out rail. Do not overstuff.' : '6–8 Units per shelf stack. Neat alignment.')}`
+        );
+      }
+
+      // 2. If Gemini API Key is available, prompt Gemini for actionable 3-part guide
       if (this.hasApiKey()) {
         try {
           const prompt = 
-            `A retail store worker just scanned garment barcode "${scannedCode}". ` +
-            `Here is the verified cheatsheet data for this item:\n` +
-            `- Section / Fixture: ${product.section} (Page ${product.page})\n` +
-            `- Position Number: #${product.position} (${product.slotType || 'Hanger/Shelf'})\n` +
+            `You are the expert retail visual merchandising AI for "Scan Dock". ` +
+            `Store worker just scanned garment barcode "${scannedCode}". Planogram details:\n` +
+            `- Fixture Section: ${product.section} (Page ${product.page})\n` +
+            `- Position: #${product.position} (${product.slotType || 'Hanger/Shelf'})\n` +
             `- Signage Price: ₹${product.signage}\n` +
             `- Color / Style: ${product.color}\n` +
-            `- Display Instructions: ${product.remarks || 'Standard placement'}\n` +
+            `- New Line Status: ${product.newLine || 'NO'}\n` +
+            `- Display Rule: ${product.remarks || 'Standard'}\n` +
             `- Capacity: ${product.capacity || 'Standard'}\n\n` +
-            `In 2 crisp, clear bullet points, tell the store worker exactly:\n` +
-            `1. WHICH rack fixture to walk to, and WHICH specific position/hanger/shelf slot to place this garment on.\n` +
-            `2. How many pieces to put and any layering or signage instruction.\n` +
-            `Keep it professional, direct, and actionable.`;
+            `Generate actionable visual merchandising instructions in clear professional retail guidelines in EXACTLY these 3 markdown sections:\n\n` +
+            `### 📍 KAHAN LAGEGA (Where to Place)\n` +
+            `• Bullet with fixture name, shelf or rail tier, and exact slot position #${product.position}.\n\n` +
+            `### 👔 KAISE LAGEGA (How to Display)\n` +
+            `• Bullets explaining hanging vs folding style, hook/collar direction, size order (S to XL), and buttoning/zipping.\n\n` +
+            `### 💡 AI VM TIPS & RULES (PDF Guidelines)\n` +
+            `• Bullets with capacity (max pieces), adjacent color coordination, price signage placement, and what NOT to do (kaise nahi lagana hai).`;
 
           const aiReply = await this.callGemini(prompt);
-          if (aiReply) return aiReply;
+          if (aiReply && aiReply.includes('KAHAN LAGEGA')) return aiReply;
+          if (aiReply) {
+            return `### 📍 KAHAN LAGEGA: ${product.section} Pos #${product.position}\n\n${aiReply}`;
+          }
         } catch (err) {
           console.warn('Gemini placement explanation call failed, using local format:', err);
         }
       }
 
-      // Local Instant High-Fidelity Answer
+      // 3. Local High-Fidelity 3-Section Format
       return (
-        `📍 **Hang/Place in ${product.section}:**\n` +
-        `• **Target Slot:** **Position #${product.position}** (${product.slotType || 'Display Slot'})\n` +
-        `• **Product:** ${product.color} • Signage: **₹${product.signage}**\n` +
-        (product.remarks ? `• **Display Rule:** *${product.remarks}*\n` : '') +
-        (product.capacity ? `• **Rack Capacity:** ${product.capacity}` : '')
+        `### 📍 KAHAN LAGEGA (Where to Place)\n` +
+        `• **Fixture & Section**: **${product.section}** (Cheatsheet Page ${product.page})\n` +
+        `• **Target Slot**: **Position #${product.position}** (${product.slotType || (isHanger ? 'Hanging Rail' : 'Shelf Stack')})\n` +
+        `• **Price Signage**: **₹${product.signage}** Talker Card\n\n` +
+        `### 👔 KAISE LAGEGA (How to Display)\n` +
+        `• **Display Style**: ${isHanger ? 'Hanging presentation — hook facing left, garment face-out, buttoned/zipped' : 'Shelf folded stack — neat rectangular fold with size sticker visible on front fold'}\n` +
+        `• **Size Sequence**: Arrange sizes Small to XL from front-to-back (or left-to-right)\n\n` +
+        `### 💡 AI VM TIPS & RULES (Cheatsheet Guidelines)\n` +
+        `• **Assortment Status**: ${isNewLine ? '🔥 **FRESH NEW LINE LAUNCH** — Prioritize eye-level / front-facing visibility!' : '📦 Core Repeat Line'}\n` +
+        `• **Rack Capacity**: ${product.capacity || (isHanger ? '4–6 Units per face-out rail' : '6–8 Units per shelf stack')}\n` +
+        `• **Display Rule**: ${product.remarks || 'Maintain clean spacing and verify price talker ₹' + product.signage}`
       );
     }
 
@@ -164,17 +204,122 @@
       return allExtracted;
     }
 
+    /**
+     * Uses Gemini 2.5 Flash Vision to detect 2D bounding boxes [ymin, xmin, ymax, xmax] (0-1000)
+     * of every garment card on a rendered PDF page canvas, extracting visual swatches and VM rules.
+     */
+    async analyzeAndCropPageWithVision(canvas, pageNum, knownProducts = []) {
+      if (!this.hasApiKey() || !canvas) return [];
+
+      try {
+        const maxDim = 1280;
+        let sendCanvas = canvas;
+        if (canvas.width > maxDim || canvas.height > maxDim) {
+          const scale = Math.min(maxDim / canvas.width, maxDim / canvas.height);
+          sendCanvas = document.createElement('canvas');
+          sendCanvas.width = Math.round(canvas.width * scale);
+          sendCanvas.height = Math.round(canvas.height * scale);
+          const sCtx = sendCanvas.getContext('2d');
+          sCtx.fillStyle = '#FFFFFF';
+          sCtx.fillRect(0, 0, sendCanvas.width, sendCanvas.height);
+          sCtx.drawImage(canvas, 0, 0, sendCanvas.width, sendCanvas.height);
+        }
+
+        const base64Data = sendCanvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
+
+        let knownHint = '';
+        if (Array.isArray(knownProducts) && knownProducts.length > 0) {
+          knownHint = `KNOWN PRODUCTS ON THIS SLIDE:\n` + 
+            knownProducts.slice(0, 25).map(p => `- Code: ${p.code}, Pos: #${p.position}, Color: ${p.color}, Price: ₹${p.signage}`).join('\n');
+        }
+
+        const promptText = 
+          `You are an expert retail planogram visual merchandising AI and computer vision extractor.\n` +
+          `Analyze this planogram cheatsheet / fixture presentation slide (Page ${pageNum}).\n\n` +
+          (knownHint ? `${knownHint}\n\n` : '') +
+          `OBJECTIVE:\n` +
+          `1. Detect every garment/product swatch or product photo card displayed on this slide.\n` +
+          `2. For each garment item, return its exact 2D bounding box in normalized coordinates [ymin, xmin, ymax, xmax] from 0 to 1000 (where 0,0 is top-left and 1000,1000 is bottom-right of the slide). The bounding box should tightly frame the garment photo and its code/price/color card so it can be cleanly cropped as a visual card snippet.\n` +
+          `3. Read the text on the slide to extract:\n` +
+          `   - "code": product code / barcode (e.g. "301077376", "301079509")\n` +
+          `   - "color": color or garment style description (e.g. "SEA SPRAY", "MUSTARD")\n` +
+          `   - "position": position number (e.g. 15, 1)\n` +
+          `   - "signage": price (e.g. "699", "799")\n` +
+          `   - "section": fixture name from the slide title (e.g. "M1 A - F M", "M2 FS URBAN STORY")\n` +
+          `   - "slotType": "Hanger" or "Shelf Stack" or "Face-out"\n` +
+          `   - "newLine": "YES" if marked as new line, else "NO"\n` +
+          `   - "kahan_lagega": Exact fixture and slot location (e.g. "M1 A - F M, Shelf 3, Slot #15")\n` +
+          `   - "kaise_lagega": Practical store display technique (e.g. "Fold neatly on shelf stack, max 4 units, size sticker facing front")\n` +
+          `   - "tips": Merchandising rules read from the slide (e.g. "Coordinate with adjacent Sea Spray palette; ensure ₹699 price talker is centered")\n\n` +
+          `Return ONLY a raw JSON array of objects with keys:\n` +
+          `[{"code": "string", "color": "string", "position": number, "signage": "string", "section": "string", "slotType": "string", "newLine": "string", "box_2d": [ymin, xmin, ymax, xmax], "kahan_lagega": "string", "kaise_lagega": "string", "tips": "string"}]\n` +
+          `Do not wrap in markdown code fence. Output pure JSON.`;
+
+        const payload = {
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: promptText },
+                {
+                  inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: base64Data
+                  }
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 2500
+          }
+        };
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error ? errData.error.message : `HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+          const raw = data.candidates[0].content.parts[0].text.trim();
+          const jsonMatch = raw.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            parsed.forEach(item => {
+              const codeStr = String(item.code || '').trim();
+              if (codeStr) {
+                this.aiMetaMap.set(codeStr, item);
+              }
+            });
+            return parsed;
+          }
+        }
+        return [];
+      } catch (err) {
+        console.warn(`analyzeAndCropPageWithVision failed on page ${pageNum}:`, err);
+        return [];
+      }
+    }
+
     async callGeminiVisionPage(base64Image, pageNum) {
       const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
       const promptText = 
-        `You are a visual merchandising data extractor for retail store fixture sheets. ` +
+        `You are an expert visual merchandising data extractor and computer vision detector for retail fixture sheets. ` +
         `Examine this cheatsheet / planogram slide (Page ${pageNum}). ` +
         `Extract all garment/product items shown. Look for product codes/barcodes (6-14 digits), ` +
-        `prices/signage (numbers, e.g. 899, 1299), colors, rack fixture name (e.g. M6, M8, M9, M10, MT2, or title), ` +
-        `and position/option numbers (1, 2, 3...).\n\n` +
+        `prices/signage (e.g. 699, 799, 899), colors, rack fixture name, position numbers, and 2D bounding boxes.\n\n` +
         `Return ONLY a raw JSON array of objects with keys:\n` +
-        `[{"code": "string", "section": "string", "position": number, "signage": "string", "color": "string", "slotType": "string", "remarks": "string"}]\n` +
-        `Do not wrap in markdown code fence. Output pure JSON.`;
+        `[{"code": "string", "section": "string", "position": number, "signage": "string", "color": "string", "slotType": "string", "newLine": "string", "remarks": "string", "box_2d": [ymin, xmin, ymax, xmax], "kahan_lagega": "string", "kaise_lagega": "string", "tips": "string"}]\n` +
+        `Where box_2d is [ymin, xmin, ymax, xmax] in 0-1000 normalized coordinates. Do not wrap in markdown code fence. Output pure JSON.`;
 
       const payload = {
         contents: [
@@ -193,7 +338,7 @@
         ],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 1500
+          maxOutputTokens: 2500
         }
       };
 
@@ -211,16 +356,28 @@
         const jsonMatch = raw.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
-          return parsed.map(item => ({
-            code: String(item.code || '').trim(),
-            section: item.section || `PAGE ${pageNum} FIXTURE`,
-            page: pageNum,
-            signage: String(item.signage || 'N/A').replace(/[^\d]/g, ''),
-            color: item.color || 'Standard',
-            position: Number(item.position) || 1,
-            slotType: item.slotType || (Number(item.position) <= 4 ? 'Hanger' : 'Shelf'),
-            remarks: item.remarks || ''
-          })).filter(x => x.code && x.code.length >= 4);
+          return parsed.map(item => {
+            const codeStr = String(item.code || '').trim();
+            const resObj = {
+              code: codeStr,
+              section: item.section || `PAGE ${pageNum} FIXTURE`,
+              page: pageNum,
+              signage: String(item.signage || 'N/A').replace(/[^\d]/g, ''),
+              color: item.color || 'Standard',
+              position: Number(item.position) || 1,
+              slotType: item.slotType || (Number(item.position) <= 4 ? 'Hanger' : 'Shelf'),
+              newLine: item.newLine || 'NO',
+              remarks: item.remarks || '',
+              box_2d: Array.isArray(item.box_2d) && item.box_2d.length === 4 ? item.box_2d : null,
+              kahan_lagega: item.kahan_lagega || '',
+              kaise_lagega: item.kaise_lagega || '',
+              tips: item.tips || ''
+            };
+            if (codeStr) {
+              this.aiMetaMap.set(codeStr, resObj);
+            }
+            return resObj;
+          }).filter(x => x.code && x.code.length >= 4);
         }
       }
       return [];
