@@ -49,7 +49,7 @@
         <button type="button" class="btn-header-pill-newlines" id="btn-quick-newlines" title="View all New Lines in Cheatsheet">
           <span class="flame-icon">🔥</span>
           <span class="newlines-btn-text">NEW LINES</span>
-          <span class="badge-newlines-pill" id="hdr-newlines-count">15</span>
+          <span class="badge-newlines-pill" id="hdr-newlines-count" style="display: none;">0</span>
         </button>
 
         <button type="button" class="icon-action-btn key-btn" id="btn-ai-settings" title="Gemini API Key" aria-label="API Key">
@@ -275,39 +275,8 @@
       <!-- Quick Test Sample Barcodes Carousel -->
       <div class="mobile-presets-shelf">
         <div class="presets-shelf-title">Tap to Test Cheatsheet Codes:</div>
-        <div class="presets-scroll-track">
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301079824" data-format="CODE_128">
-            <span class="chip-tag">M8 Pos 33 (New Line)</span>
-            <span class="chip-num">301079824</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081626" data-format="CODE_128">
-            <span class="chip-tag">M6 Pos 1</span>
-            <span class="chip-num">301081626</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301075847" data-format="CODE_128">
-            <span class="chip-tag">M6 Pos 2</span>
-            <span class="chip-num">301075847</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081624" data-format="CODE_128">
-            <span class="chip-tag">M6 Pos 3</span>
-            <span class="chip-num">301081624</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301078439" data-format="CODE_128">
-            <span class="chip-tag">M6 Pos 7</span>
-            <span class="chip-num">301078439</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301081946" data-format="CODE_128">
-            <span class="chip-tag">M8 Pos 23 (New Line)</span>
-            <span class="chip-num">301081946</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301080548" data-format="CODE_128">
-            <span class="chip-tag">M9 Pos 1</span>
-            <span class="chip-num">301080548</span>
-          </button>
-          <button type="button" class="chip-sample-code preset-code-btn" data-code="301057130" data-format="CODE_128">
-            <span class="chip-tag">M10 Pos 1</span>
-            <span class="chip-num">301057130</span>
-          </button>
+        <div class="presets-scroll-track" id="presets-scroll-track">
+          <span class="presets-empty-hint" id="presets-empty-hint" style="font-size: 11.5px; color: var(--muted); padding: 4px 8px;">Upload a Planogram PDF in Cheatsheet Dock to activate test barcodes</span>
         </div>
       </div>
 
@@ -323,21 +292,21 @@
             <h2 class="screen-title">✨ Fresh New Lines</h2>
             <div class="screen-subtitle-text">Cheatsheet Catalog &bull; Fresh Launch Assortment</div>
           </div>
-          <span class="screen-badge newlines-badge" id="screen-newlines-badge">15 New Lines</span>
+          <span class="screen-badge newlines-badge" id="screen-newlines-badge">0 New Lines</span>
         </div>
 
         <!-- New Lines Summary Metrics -->
         <div class="newlines-summary-bar">
           <div class="metric-card">
-            <span class="metric-val" id="metric-newlines-total">15</span>
+            <span class="metric-val" id="metric-newlines-total">0</span>
             <span class="metric-title">Total New Lines</span>
           </div>
           <div class="metric-card">
-            <span class="metric-val" id="metric-sections-count">4</span>
+            <span class="metric-val" id="metric-sections-count">0</span>
             <span class="metric-title">Active Fixtures</span>
           </div>
           <div class="metric-card">
-            <span class="metric-val" id="metric-top-section">M8 MONO</span>
+            <span class="metric-val" id="metric-top-section">—</span>
             <span class="metric-title">Largest Launch</span>
           </div>
         </div>
@@ -404,10 +373,10 @@
         <!-- Active PDF Info Banner -->
         <div class="pdf-mobile-meta-box">
           <div class="pdf-info-row">
-            <div class="pdf-doc-badge" id="pdf-doc-badge">PDF</div>
+            <div class="pdf-doc-badge" id="pdf-doc-badge">NO DOC</div>
             <div class="pdf-details">
-              <div class="pdf-name" id="pdf-name-label">Store Cheatsheet (M6-M10 &amp; MT2)</div>
-              <div class="pdf-stats" id="pdf-size-label">6 Pages &bull; 56 Products Indexed</div>
+              <div class="pdf-name" id="pdf-name-label">No Document Uploaded</div>
+              <div class="pdf-stats" id="pdf-size-label">0 Pages &bull; 0 Products Indexed</div>
             </div>
           </div>
 
@@ -420,7 +389,7 @@
 
             <button type="button" class="btn-pdf-act" id="btn-remove-pdf">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              Reset Catalog
+              Remove Document
             </button>
           </div>
         </div>
@@ -602,7 +571,7 @@
     <button type="button" class="nav-tab-btn" data-tab="tab-newlines" id="nav-btn-newlines">
       <div class="nav-icon-wrap">
         <span class="nav-flame-icon">🔥</span>
-        <span class="nav-counter-dot newlines-dot" id="nav-newlines-count">15</span>
+        <span class="nav-counter-dot newlines-dot" id="nav-newlines-count" style="display: none;">0</span>
       </div>
       <span class="nav-label">New Lines</span>
     </button>
@@ -702,22 +671,16 @@
         <h3 class="dialog-title">Test Barcode Simulator</h3>
         <button type="button" class="btn-row-action" id="btn-close-sim">&times;</button>
       </div>
-      <p style="font-size: 12.5px; color: var(--muted); margin-top: -4px;">
-        Tap any preset code from your Cheatsheet to test the rack position locator:
+      <p style="font-size: 12.5px; color: var(--muted); margin-top: -4px;" id="modal-presets-label">
+        Tap any preset code from your active document to test rack positioning:
       </p>
-      <div class="modal-presets-grid">
-        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301081626" data-format="CODE_128">M6: 301081626 (White)</button>
-        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301075847" data-format="CODE_128">M6: 301075847 (Grey)</button>
-        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301081624" data-format="CODE_128">M6: 301081624 (Indigo)</button>
-        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301078439" data-format="CODE_128">M6: 301078439 (Taupe)</button>
-        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301081946" data-format="CODE_128">M8: 301081946 (Indigo)</button>
-        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301080548" data-format="CODE_128">M9: 301080548 (Coffee)</button>
-        <button type="button" class="btn-tool-chip preset-code-btn" data-code="301057130" data-format="CODE_128">M10: 301057130 (White)</button>
+      <div class="modal-presets-grid" id="modal-presets-grid">
+        <span style="font-size: 11.5px; color: var(--muted); padding: 8px 4px; grid-column: 1 / -1;">Upload a Planogram PDF to activate test preset buttons</span>
       </div>
       <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
         <label for="manual-barcode-input" style="font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--muted);">Manual Barcode Input</label>
         <div style="display: flex; gap: 6px;">
-          <input type="text" id="manual-barcode-input" class="preview-custom-input" value="301081626">
+          <input type="text" id="manual-barcode-input" class="preview-custom-input" placeholder="Type or paste barcode...">
           <select id="manual-format-select" class="mobile-cam-select" style="max-width: 105px;">
             <option value="CODE_128">CODE-128</option>
             <option value="EAN_13">EAN-13</option>

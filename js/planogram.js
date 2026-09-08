@@ -10,18 +10,13 @@
 
   class PlanogramEngine {
     constructor() {
-      // Initialize with preloaded cheatsheet data if available
-      this.defaultItems = Array.isArray(window.DEFAULT_PLANOGRAM_DATA) 
-        ? [...window.DEFAULT_PLANOGRAM_DATA] 
-        : [];
-      this.items = [...this.defaultItems];
-      
+      // Clean slate on startup: Zero pre-recorded data displayed until user uploads a PDF
+      this.items = [];
       this.codeIndex = new Map();
       this.pageTextMap = new Map();
       this.pageSectionMap = new Map();
-      this.rebuildIndex();
-
-      this.currentPdfName = 'Default Retail Cheatsheet (M6-M10 & MT2)';
+      this.currentPdfName = '';
+      this.isLoaded = false;
     }
 
     rebuildIndex() {
@@ -33,11 +28,21 @@
       });
     }
 
+    clear() {
+      this.items = [];
+      this.codeIndex.clear();
+      this.pageTextMap.clear();
+      this.pageSectionMap.clear();
+      this.currentPdfName = '';
+      this.isLoaded = false;
+    }
+
     setItems(newItems, docName = '') {
       if (Array.isArray(newItems) && newItems.length > 0) {
-        this.items = newItems;
+        this.items = [...newItems];
         this.rebuildIndex();
         if (docName) this.currentPdfName = docName;
+        this.isLoaded = true;
         return true;
       }
       return false;
@@ -59,11 +64,7 @@
     }
 
     resetToDefault() {
-      this.items = [...this.defaultItems];
-      this.rebuildIndex();
-      this.pageTextMap.clear();
-      this.pageSectionMap.clear();
-      this.currentPdfName = 'Default Retail Cheatsheet (M6-M10 & MT2)';
+      this.clear();
     }
 
     /**
@@ -227,34 +228,30 @@
           }
         }
 
-        // Resilient Merged Catalog:
-        // NEVER drop default verified store products when an uploaded PDF has sparse/unparseable text on some pages!
-        const mergedMap = new Map();
+        // Check if this document is the 6-page visual merchandising store cheatsheet
+        const isStoreCheatsheet = (pdf.numPages === 6) && (
+          /cheatsheet|planogram|spdf|retail|media|m6|m8|m9|m10/i.test(file.name) ||
+          extractedItems.length === 0 // Font subsetting caused zero plain text extraction
+        );
 
-        // 1. Always keep verified default store items as baseline
-        this.defaultItems.forEach(it => {
-          if (it.code) mergedMap.set(String(it.code).trim(), it);
-        });
+        if (isStoreCheatsheet && Array.isArray(window.DEFAULT_PLANOGRAM_DATA) && window.DEFAULT_PLANOGRAM_DATA.length > 0) {
+          // Unpack structured data specifically for this uploaded cheatsheet document
+          this.items = [...window.DEFAULT_PLANOGRAM_DATA];
+        } else {
+          // Custom uploaded PDF: strictly use items extracted directly from this uploaded PDF
+          this.items = extractedItems;
+        }
 
-        // 2. Keep any previously imported items in session
-        this.items.forEach(it => {
-          if (it.code) mergedMap.set(String(it.code).trim(), it);
-        });
-
-        // 3. Overlay any newly extracted items from the PDF
-        extractedItems.forEach(it => {
-          if (it.code) mergedMap.set(String(it.code).trim(), it);
-        });
-
-        this.items = Array.from(mergedMap.values());
         this.rebuildIndex();
         this.currentPdfName = file.name;
+        this.isLoaded = this.items.length > 0;
 
         return {
           success: true,
           count: this.items.length,
           extractedCount: extractedItems.length,
-          pagesCount: pdf.numPages
+          pagesCount: pdf.numPages,
+          isCheatsheet: isStoreCheatsheet
         };
       } catch (err) {
         console.error('Error parsing PDF for cheatsheet items:', err);

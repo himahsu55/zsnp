@@ -116,9 +116,14 @@
       return canvases;
     }
 
+    clear() {
+      this.renderedPages.clear();
+      this.currentPdfDoc = null;
+    }
+
     getPageCount() {
       if (this.currentPdfDoc) return this.currentPdfDoc.numPages;
-      return this.renderedPages.size || 6;
+      return this.renderedPages.size || 0;
     }
 
     getPageCanvas(pageNum = 1) {
@@ -545,9 +550,8 @@
         ctx.fillText(`RAW SCANNED: ${rawCode}`, 20, 92);
       }
 
-      ctx.fillStyle = '#A0AEC0';
-      ctx.font = '12px sans-serif';
-      ctx.fillText(`Active Doc: ${docName.slice(0, 36)}`, 20, 120);
+      const activeDocLabel = docName ? docName.slice(0, 36) : 'None (No PDF Uploaded)';
+      ctx.fillText(`Active Doc: ${activeDocLabel}`, 20, 120);
 
       // Diagnostic Box
       ctx.fillStyle = 'rgba(255, 71, 58, 0.12)';

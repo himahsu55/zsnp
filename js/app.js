@@ -10,10 +10,10 @@
     pdf: {
       file: null,
       blobUrl: null,
-      name: 'Default Cheatsheet (M6-M10 & MT2)',
-      sizeFormatted: 'Preloaded Catalog'
+      name: '',
+      sizeFormatted: 'No Document Active'
     },
-    activeSection: 'M6 DENIM',
+    activeSection: '',
     activeTab: 'tab-scanner',
     newlinesFilter: 'ALL',
     newlinesSearch: '',
@@ -198,10 +198,10 @@
       });
     }
 
-    // Ensure all 56 baseline store products are active on boot
-    if (planogram.getTotalCount() < planogram.defaultItems.length) {
-      planogram.resetToDefault();
-    }
+    // Start with a clean slate: 0 pre-recorded items until user uploads a PDF
+    updateNewLinesCounters();
+    updatePresetsShelf();
+    updateSectionFilters();
 
     // 4. Tab Navigation Switcher
     function switchTab(targetTabId) {
@@ -458,6 +458,13 @@
       // AI Diagnostic Explanation (with resilient fallback)
       if (el.aiPlacementText) {
         el.aiPlacementText.textContent = 'Gemini AI diagnosing scanned barcode...';
+      if (!state.pdf.name || planogram.getTotalCount() === 0) {
+        el.aiPlacementText.innerHTML =
+          `⚠️ <strong>No Planogram Document Loaded:</strong><br>` +
+          `• You scanned barcode <code>${escapeHtml(scannedCode)}</code>, but no store planogram PDF is active.<br>` +
+          `• Tap <strong>Upload PDF / Slide</strong> below to upload your planogram and activate product matching.`;
+      } else if (ai.hasApiKey()) {
+        el.aiPlacementText.textContent = 'Gemini AI diagnosing scanned barcode...';
         ai.explainNotFound(scannedCode, rawCode, n, state.pdf.name)
           .then(text => {
             el.aiPlacementText.innerHTML = formatMarkdown(text);
@@ -468,6 +475,11 @@
               `⚠️ <strong>Item Not Found:</strong> Code <code>${escapeHtml(scannedCode)}</code> has no matching slot in this cheatsheet.<br>` +
               `• Check trimming dial or upload the matching PDF cheatsheet.`;
           });
+      } else {
+        el.aiPlacementText.innerHTML =
+          `⚠️ <strong>Item Not Found in Cheatsheet:</strong> Code <code>${escapeHtml(scannedCode)}</code> was not matched to any rack position in <em>${escapeHtml(state.pdf.name)}</em>.<br>` +
+          `• Check trimming dial if barcode has trailing size/check digits.<br>` +
+          `• Or verify you uploaded the correct fixture planogram document.`;
       }
 
       // Diagnostic Snippet Graphic
@@ -491,11 +503,19 @@
 
       // Informative Rack Fallback
       if (el.hudVisualRackWrap) {
-        el.hudVisualRackWrap.innerHTML = `
-          <div class="result-remarks-banner" style="margin-top: 6px;">
-            ⚠️ <strong>No Fixture Slot Found:</strong> Barcode <code>${escapeHtml(scannedCode)}</code> is not allocated to any hanger rail or shelf tier in <em>${escapeHtml(state.pdf.name)}</em>.
-          </div>
-        `;
+        if (planogram.getTotalCount() === 0) {
+          el.hudVisualRackWrap.innerHTML = `
+            <div class="result-remarks-banner" style="margin-top: 6px;">
+              ⚠️ <strong>No Planogram Active:</strong> Please upload a store planogram PDF in the <strong>Cheatsheet Dock</strong> first to index products and verify fixture positions.
+            </div>
+          `;
+        } else {
+          el.hudVisualRackWrap.innerHTML = `
+            <div class="result-remarks-banner" style="margin-top: 6px;">
+              ⚠️ <strong>No Fixture Slot Found:</strong> Barcode <code>${escapeHtml(scannedCode)}</code> is not allocated to any hanger rail or shelf tier in <em>${escapeHtml(state.pdf.name)}</em>.
+            </div>
+          `;
+        }
       }
 
       // Show Action Buttons for 1-Tap Troubleshooting
@@ -525,7 +545,10 @@
     // 8. Fresh New Lines Tab & Section Controller
     function updateNewLinesCounters() {
       const totalNewLines = planogram.getNewLinesCount ? planogram.getNewLinesCount() : 0;
-      if (el.hdrNewlinesCount) el.hdrNewlinesCount.textContent = totalNewLines;
+      if (el.hdrNewlinesCount) {
+        el.hdrNewlinesCount.textContent = totalNewLines;
+        el.hdrNewlinesCount.style.display = totalNewLines > 0 ? 'inline-block' : 'none';
+      }
       if (el.navNewlinesCount) {
         el.navNewlinesCount.textContent = totalNewLines;
         el.navNewlinesCount.style.display = totalNewLines > 0 ? 'inline-block' : 'none';
@@ -537,7 +560,7 @@
       const activeSections = Object.keys(bySection).filter(s => bySection[s].length > 0);
       if (el.metricSectionsCount) el.metricSectionsCount.textContent = activeSections.length;
 
-      let topSec = 'None';
+      let topSec = '—';
       let maxLen = 0;
       activeSections.forEach(s => {
         if (bySection[s].length > maxLen) {
@@ -546,13 +569,32 @@
         }
       });
       if (el.metricTopSection) {
-        el.metricTopSection.textContent = maxLen > 0 ? `${topSec.replace(' DENIM', '').replace(' ESSENTIALS', '')} (${maxLen})` : 'None';
+        el.metricTopSection.textContent = maxLen > 0 ? `${topSec.replace(' DENIM', '').replace(' ESSENTIALS', '')} (${maxLen})` : '—';
       }
     }
 
     function renderNewLinesScreen() {
       updateNewLinesCounters();
       if (!el.newlinesCatalogGrid) return;
+
+      if (planogram.getTotalCount() === 0) {
+        el.newlinesCatalogGrid.innerHTML = `
+          <div class="empty-newlines-state">
+            <div class="empty-state-icon">📄</div>
+            <div class="empty-state-title">No Planogram PDF Uploaded</div>
+            <div class="empty-state-desc">Upload your store cheatsheet or visual merchandising PDF to extract New Lines and verify garment positions.</div>
+            <button type="button" class="btn-primary-laser" id="btn-empty-upload-newlines" style="max-width: 240px; margin: 0 auto; height: 38px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              Upload Planogram PDF
+            </button>
+          </div>
+        `;
+        const btnUpload = document.getElementById('btn-empty-upload-newlines');
+        if (btnUpload && el.pdfFileInput) {
+          btnUpload.addEventListener('click', () => el.pdfFileInput.click());
+        }
+        return;
+      }
 
       const allNewLines = planogram.getAllNewLines ? planogram.getAllNewLines() : [];
       const filterSec = state.newlinesFilter || 'ALL';
@@ -690,9 +732,28 @@
     function renderFullRackView(sectionName, searchFilter = '') {
       if (!el.fullRackDisplay) return;
 
+      if (planogram.getTotalCount() === 0) {
+        el.fullRackDisplay.innerHTML = `
+          <div class="empty-newlines-state">
+            <div class="empty-state-icon">🏗️</div>
+            <div class="empty-state-title">No Floor Fixtures Active</div>
+            <div class="empty-state-desc">Upload a planogram PDF in the Cheatsheet Dock to activate fixture racks, hanging rails, and shelf slot maps.</div>
+            <button type="button" class="btn-primary-laser" id="btn-empty-upload-rack" style="max-width: 240px; margin: 0 auto; height: 38px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+              Upload Planogram PDF
+            </button>
+          </div>
+        `;
+        const btnUpload = document.getElementById('btn-empty-upload-rack');
+        if (btnUpload && el.pdfFileInput) {
+          btnUpload.addEventListener('click', () => el.pdfFileInput.click());
+        }
+        return;
+      }
+
       const items = planogram.getAllItems().filter(it => it.section === sectionName);
       if (items.length === 0) {
-        el.fullRackDisplay.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--muted);">No items found in section ${sectionName}</div>`;
+        el.fullRackDisplay.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--muted); font-size: 13px;">No items found in section ${escapeHtml(sectionName || 'selected')}</div>`;
         return;
       }
 
@@ -851,12 +912,12 @@
       renderDefaultCheatsheetView() {
         if (!el.docActiveCanvas) return;
         this.isImage = false;
-        this.totalPages = 6;
-        this.currentPage = 1;
-        if (el.docCurrentPage) el.docCurrentPage.textContent = '1';
-        if (el.docTotalPages) el.docTotalPages.textContent = '6';
+        this.totalPages = 0;
+        this.currentPage = 0;
+        if (el.docCurrentPage) el.docCurrentPage.textContent = '0';
+        if (el.docTotalPages) el.docTotalPages.textContent = '0';
         if (el.btnDocPrev) el.btnDocPrev.disabled = true;
-        if (el.btnDocNext) el.btnDocNext.disabled = false;
+        if (el.btnDocNext) el.btnDocNext.disabled = true;
 
         const c = el.docActiveCanvas;
         c.width = 1100;
@@ -871,76 +932,30 @@
         ctx.fillStyle = '#181E27';
         ctx.fillRect(0, 0, c.width, 60);
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 20px sans-serif';
-        ctx.fillText('STORE CHEATSHEET • M6 DENIM (PAGE 1 OF 6)', 30, 38);
+        ctx.font = 'bold 18px sans-serif';
+        ctx.fillText('CHEATSHEET PDF VIEWER • READY FOR UPLOAD', 30, 38);
 
-        ctx.fillStyle = '#55E497';
-        ctx.font = 'bold 12px monospace';
-        ctx.fillText('ACTIVE STORE CATALOG • 14 POSITIONS • HANGING & FOLDED TIERS', 30, 55);
+        // Central Empty State Graphic
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 8]);
+        ctx.strokeRect(200, 140, 700, 420);
+        ctx.setLineDash([]);
 
-        // Left fixture column
-        ctx.fillStyle = '#141820';
-        ctx.fillRect(20, 80, 260, 580);
-        ctx.strokeStyle = '#2A3444';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(20, 80, 260, 580);
+        ctx.fillStyle = 'rgba(26, 98, 198, 0.08)';
+        ctx.fillRect(202, 142, 696, 416);
 
-        ctx.fillStyle = '#FF473A';
-        ctx.font = 'bold 14px monospace';
-        ctx.fillText('FIXTURE: M6 DENIM', 36, 110);
-        ctx.fillStyle = '#A0AEC0';
-        ctx.font = '12px sans-serif';
-        ctx.fillText('Top Rail: 4 Hanger Options', 36, 135);
-        ctx.fillText('Shelf Stacks: 10 Shelves', 36, 155);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('NO PLANOGRAM DOCUMENT ACTIVE', 550, 320);
 
-        // Right grid: render sample cards for options 1 to 8
-        const sampleCards = [
-          { pos: 1, code: '301081626', color: 'WHITE', price: '899' },
-          { pos: 2, code: '301075847', color: 'GREY', price: '899' },
-          { pos: 3, code: '301081624', color: 'LT INDIGO', price: '899' },
-          { pos: 4, code: '301081625', color: 'TINT', price: '899' },
-          { pos: 5, code: '301081627', color: 'DK INDIGO', price: '999' },
-          { pos: 6, code: '301081628', color: 'BLACK', price: '999' },
-          { pos: 7, code: '301075848', color: 'BLUE', price: '899' },
-          { pos: 8, code: '301075849', color: 'CHARCOAL', price: '899' }
-        ];
+        ctx.fillStyle = '#8C93A0';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('Click "Upload Document" above to upload your store planogram PDF or slides.', 550, 360);
+        ctx.fillText('Products, new lines, and fixture coordinates will be deployed across the app instantly.', 550, 390);
 
-        sampleCards.forEach((sc, idx) => {
-          const col = idx % 4;
-          const row = Math.floor(idx / 4);
-          const x = 300 + (col * 190);
-          const y = 80 + (row * 270);
-
-          ctx.fillStyle = '#141820';
-          ctx.fillRect(x, y, 175, 240);
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-          ctx.strokeRect(x, y, 175, 240);
-
-          // Pos badge
-          ctx.fillStyle = '#FF473A';
-          ctx.fillRect(x + 8, y + 8, 55, 20);
-          ctx.fillStyle = '#FFF';
-          ctx.font = 'bold 10px monospace';
-          ctx.fillText(`POS #${sc.pos}`, x + 14, y + 22);
-
-          // Product box
-          ctx.fillStyle = '#1D232E';
-          ctx.fillRect(x + 8, y + 36, 159, 110);
-          ctx.fillStyle = '#8C93A0';
-          ctx.font = '12px monospace';
-          ctx.fillText(`[ ${sc.color} ]`, x + 40, y + 95);
-
-          // Specs
-          ctx.fillStyle = '#FFF';
-          ctx.font = 'bold 11.5px monospace';
-          ctx.fillText(`CODE: ${sc.code}`, x + 10, y + 170);
-          ctx.fillStyle = '#55E497';
-          ctx.fillText(`PRICE: ₹${sc.price}`, x + 10, y + 192);
-          ctx.fillStyle = '#A0AEC0';
-          ctx.font = '11px sans-serif';
-          ctx.fillText(`Option ${sc.pos}`, x + 10, y + 214);
-        });
-
+        ctx.textAlign = 'left';
         this.applyZoom();
       }
     };
@@ -972,6 +987,132 @@
         docViewer.zoom = 1.0;
         docViewer.applyZoom();
       });
+    }
+
+    // Dynamic Rack & New Lines Section Filter Buttons
+    function updateSectionFilters() {
+      const items = planogram.getAllItems();
+      const sections = [...new Set(items.map(it => it.section).filter(Boolean))];
+
+      // Update Rack Section Selector
+      if (el.sectionPillsRow) {
+        if (sections.length === 0) {
+          el.sectionPillsRow.innerHTML = '';
+        } else {
+          if (!sections.includes(state.activeSection)) {
+            state.activeSection = sections[0];
+          }
+          el.sectionPillsRow.innerHTML = sections.map(sec => {
+            const isActive = sec === state.activeSection ? 'active' : '';
+            return `<button type="button" class="btn-section-pill ${isActive}" data-section="${escapeHtml(sec)}">${escapeHtml(sec)}</button>`;
+          }).join('');
+
+          el.sectionPillsRow.querySelectorAll('.btn-section-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+              el.sectionPillsRow.querySelectorAll('.btn-section-pill').forEach(b => b.classList.remove('active'));
+              btn.classList.add('active');
+              state.activeSection = btn.getAttribute('data-section');
+              renderFullRackView(state.activeSection, el.rackSearchInput ? el.rackSearchInput.value : '');
+            });
+          });
+        }
+      }
+
+      // Update New Lines Section Filter
+      if (el.newlinesSectionFilter) {
+        const bySection = planogram.getNewLinesBySection ? planogram.getNewLinesBySection() : {};
+        const nlSections = Object.keys(bySection).filter(s => bySection[s].length > 0);
+        if (nlSections.length === 0) {
+          el.newlinesSectionFilter.innerHTML = '<button type="button" class="btn-section-pill active" data-filter="ALL">ALL NEW LINES</button>';
+        } else {
+          el.newlinesSectionFilter.innerHTML = `
+            <button type="button" class="btn-section-pill ${state.newlinesFilter === 'ALL' ? 'active' : ''}" data-filter="ALL">ALL NEW LINES</button>
+            ${nlSections.map(sec => {
+              const isActive = sec === state.newlinesFilter ? 'active' : '';
+              const shortName = sec.replace(' DENIM', '').replace(' ESSENTIALS', '');
+              return `<button type="button" class="btn-section-pill ${isActive}" data-filter="${escapeHtml(sec)}">${escapeHtml(shortName)}</button>`;
+            }).join('')}
+          `;
+
+          el.newlinesSectionFilter.querySelectorAll('.btn-section-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+              el.newlinesSectionFilter.querySelectorAll('.btn-section-pill').forEach(b => b.classList.remove('active'));
+              btn.classList.add('active');
+              state.newlinesFilter = btn.getAttribute('data-filter');
+              renderNewLinesScreen();
+            });
+          });
+        }
+      }
+    }
+
+    // Dynamic Sample Codes Carousel & Simulator Presets
+    function updatePresetsShelf() {
+      const track = document.getElementById('presets-scroll-track');
+      const modalPresetsGrid = document.getElementById('modal-presets-grid');
+      const items = planogram.getAllItems();
+
+      if (items.length === 0) {
+        if (track) {
+          track.innerHTML = `<span class="presets-empty-hint" style="font-size: 11.5px; color: var(--muted); padding: 4px 8px;">Upload a Planogram PDF in Cheatsheet Dock to activate test barcodes</span>`;
+        }
+        if (modalPresetsGrid) {
+          modalPresetsGrid.innerHTML = `<span style="font-size: 11.5px; color: var(--muted); padding: 8px 4px; grid-column: 1 / -1;">Upload a Planogram PDF to activate test preset buttons</span>`;
+        }
+        return;
+      }
+
+      // Pick up to 8 sample items from the catalog
+      const sampleItems = [];
+      const newLines = items.filter(it => (it.newLine || '').toUpperCase() === 'YES');
+      newLines.slice(0, 4).forEach(it => sampleItems.push(it));
+
+      items.forEach(it => {
+        if (sampleItems.length < 8 && !sampleItems.some(x => x.code === it.code)) {
+          sampleItems.push(it);
+        }
+      });
+
+      if (track) {
+        track.innerHTML = sampleItems.map(it => {
+          const isNL = (it.newLine || '').toUpperCase() === 'YES';
+          const tag = `${it.section.split(' ')[0]} Pos ${it.position}${isNL ? ' (New Line)' : ''}`;
+          return `
+            <button type="button" class="chip-sample-code preset-code-btn" data-code="${escapeHtml(it.code)}" data-format="CODE_128">
+              <span class="chip-tag">${escapeHtml(tag)}</span>
+              <span class="chip-num">${escapeHtml(it.code)}</span>
+            </button>
+          `;
+        }).join('');
+
+        track.querySelectorAll('.preset-code-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const code = btn.getAttribute('data-code');
+            const format = btn.getAttribute('data-format') || 'PRESET';
+            handleScanEvent(code, format);
+          });
+        });
+      }
+
+      if (modalPresetsGrid) {
+        modalPresetsGrid.innerHTML = sampleItems.map(it => {
+          const secShort = it.section.split(' ')[0];
+          return `
+            <button type="button" class="btn-tool-chip preset-code-btn" data-code="${escapeHtml(it.code)}" data-format="CODE_128">
+              ${escapeHtml(secShort)}: ${escapeHtml(it.code)} (${escapeHtml(it.color || 'Option ' + it.position)})
+            </button>
+          `;
+        }).join('');
+
+        modalPresetsGrid.querySelectorAll('.preset-code-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const code = btn.getAttribute('data-code');
+            const format = btn.getAttribute('data-format') || 'PRESET';
+            handleScanEvent(code, format);
+            if (el.simModal) el.simModal.classList.remove('open');
+          });
+        });
+      }
     }
 
     // 10. Document Upload & Multi-Tier AI/Canvas Extraction
@@ -1016,6 +1157,9 @@
             if (visionItems && visionItems.length > 0) {
               planogram.setItems(visionItems, file.name);
               updateNewLinesCounters();
+              renderNewLinesScreen();
+              updateSectionFilters();
+              updatePresetsShelf();
               if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = `1 Slide • ${visionItems.length} Products Indexed by AI`;
               showToast(`Slide Analyzed: ${visionItems.length} items extracted by Gemini Vision!`, 'success');
             } else {
@@ -1043,6 +1187,12 @@
           }
           db.saveLocalPlanogram(file.name, planogram.getAllItems());
           updateNewLinesCounters();
+          renderNewLinesScreen();
+          updateSectionFilters();
+          updatePresetsShelf();
+          if (planogram.getAllItems().length > 0) {
+            state.activeSection = planogram.getAllItems()[0].section;
+          }
           showToast(`PDF Analyzed: ${res.count} products indexed and active!`, 'success');
 
           // If Gemini API Key is available and document had pages with subset/scanned text, enrich with Vision
@@ -1053,6 +1203,9 @@
                 if (added > 0) {
                   db.saveLocalPlanogram(file.name, planogram.getAllItems());
                   updateNewLinesCounters();
+                  renderNewLinesScreen();
+                  updateSectionFilters();
+                  updatePresetsShelf();
                   if (el.pdfSizeLabel) {
                     el.pdfSizeLabel.textContent = `${cropper.getPageCount()} Pages • ${planogram.getTotalCount()} Products Indexed & Active`;
                   }
@@ -1081,18 +1234,25 @@
       el.btnRemovePdf.addEventListener('click', () => {
         if (state.pdf.blobUrl) URL.revokeObjectURL(state.pdf.blobUrl);
         state.pdf.file = null;
-        state.pdf.name = 'Default Cheatsheet (M6-M10 & MT2)';
+        state.pdf.name = '';
         state.pdf.blobUrl = null;
+        state.pdf.sizeFormatted = 'No Document Active';
+        state.activeSection = '';
 
-        planogram.resetToDefault();
+        planogram.clear();
+        cropper.clear();
         updateNewLinesCounters();
+        renderNewLinesScreen();
+        renderFullRackView('');
+        updateSectionFilters();
+        updatePresetsShelf();
 
-        if (el.pdfNameLabel) el.pdfNameLabel.textContent = 'Store Cheatsheet (M6-M10 & MT2)';
-        if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = '6 Pages • 56 Products Indexed';
-        if (el.pdfDocBadge) el.pdfDocBadge.textContent = 'PDF';
+        if (el.pdfNameLabel) el.pdfNameLabel.textContent = 'No Document Uploaded';
+        if (el.pdfSizeLabel) el.pdfSizeLabel.textContent = '0 Pages • 0 Products Indexed';
+        if (el.pdfDocBadge) el.pdfDocBadge.textContent = 'NO DOC';
 
         docViewer.renderDefaultCheatsheetView();
-        showToast('Reset to default Cheatsheet catalog', 'info');
+        showToast('Document removed. Catalog reset to 0.', 'info');
       });
     }
 
