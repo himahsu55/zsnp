@@ -19,7 +19,8 @@
       this.aiCroppedCacheByPos = new Map(); // `${pageNum}_${pos}` -> dataUrl
       this.aiItemMeta = new Map(); // code -> item info with kahan_lagega, kaise_lagega, tips
       this.analyzedPages = new Set(); // page numbers analyzed by Gemini Vision
-      this.analyzingPages = new Set(); // page numbers currently in-flight
+      this.analyzingPromises = new Map(); // pageNum -> Promise<boolean>
+      this.onPageAiAnalyzed = null; // callback when page finishes AI analysis
       this.preloadDefaultAssets();
     }
 
@@ -133,7 +134,7 @@
       this.aiCroppedCacheByPos.clear();
       this.aiItemMeta.clear();
       this.analyzedPages.clear();
-      this.analyzingPages.clear();
+      this.analyzingPromises.clear();
     }
 
     getPageCount() {
@@ -194,81 +195,106 @@
     }
 
     /**
-     * Proactively analyzes a PDF page with Gemini Vision to extract 2D bounding boxes [ymin, xmin, ymax, xmax]
+     * Proactively analyzes a PDF page or slide with Gemini Vision to extract 2D bounding boxes [ymin, xmin, ymax, xmax]
      * and caches high-resolution garment card crops for all items on the page.
      */
-    async analyzePageWithAI(pageNum, knownProducts = []) {
-      if (!this.aiService || !this.aiService.hasApiKey()) return false;
+    analyzePageWithAI(pageNum, knownProducts = []) {
+      if (!this.aiService || !this.aiService.hasApiKey()) return Promise.resolve(false);
       const p = parseInt(pageNum, 10) || 1;
-      if (this.analyzedPages.has(p) || this.analyzingPages.has(p)) return false;
+      if (this.analyzedPages.has(p)) return Promise.resolve(true);
+      if (this.analyzingPromises.has(p)) return this.analyzingPromises.get(p);
 
-      this.analyzingPages.add(p);
-      try {
-        let pageData = this.renderedPages.get(p);
-        if (!pageData && this.currentPdfDoc) {
-          pageData = await this.renderPage(p);
-        }
-        if (!pageData || !pageData.canvas) return false;
+      const promise = (async () => {
+        try {
+          let canvas = null;
+          let pageData = this.renderedPages.get(p);
+          if (!pageData && this.currentPdfDoc) {
+            pageData = await this.renderPage(p);
+          }
+          if (pageData && pageData.canvas && pageData.canvas.width > 0) {
+            canvas = pageData.canvas;
+          } else {
+            // Load from preloaded cheatsheet slide image
+            const slideImg = await this.getSlideImage(p);
+            if (slideImg && (slideImg.naturalWidth || slideImg.width)) {
+              canvas = document.createElement('canvas');
+              canvas.width = slideImg.naturalWidth || slideImg.width || 2250;
+              canvas.height = slideImg.naturalHeight || slideImg.height || 1407;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(slideImg, 0, 0, canvas.width, canvas.height);
+              }
+            }
+          }
+          if (!canvas || canvas.width <= 0 || canvas.height <= 0) return false;
 
-        const { canvas } = pageData;
-        const items = await this.aiService.analyzeAndCropPageWithVision(canvas, p, knownProducts);
-        if (Array.isArray(items) && items.length > 0) {
-          for (const item of items) {
-            const cleanCode = String(item.code || '').trim();
-            if (Array.isArray(item.box_2d) && item.box_2d.length === 4) {
-              const [ymin, xmin, ymax, xmax] = item.box_2d;
-              const normYmin = Math.max(0, Math.min(1000, ymin));
-              const normXmin = Math.max(0, Math.min(1000, xmin));
-              const normYmax = Math.max(normYmin + 10, Math.min(1000, ymax));
-              const normXmax = Math.max(normXmin + 10, Math.min(1000, xmax));
+          const items = await this.aiService.analyzeAndCropPageWithVision(canvas, p, knownProducts);
+          if (Array.isArray(items) && items.length > 0) {
+            for (const item of items) {
+              const cleanCode = String(item.code || '').trim();
+              if (Array.isArray(item.box_2d) && item.box_2d.length === 4) {
+                const [ymin, xmin, ymax, xmax] = item.box_2d;
+                const normYmin = Math.max(0, Math.min(1000, ymin));
+                const normXmin = Math.max(0, Math.min(1000, xmin));
+                const normYmax = Math.max(normYmin + 10, Math.min(1000, ymax));
+                const normXmax = Math.max(normXmin + 10, Math.min(1000, xmax));
 
-              const cropX = (normXmin / 1000) * canvas.width;
-              const cropY = (normYmin / 1000) * canvas.height;
-              const cropW = ((normXmax - normXmin) / 1000) * canvas.width;
-              const cropH = ((normYmax - normYmin) / 1000) * canvas.height;
+                const cropX = (normXmin / 1000) * canvas.width;
+                const cropY = (normYmin / 1000) * canvas.height;
+                const cropW = ((normXmax - normXmin) / 1000) * canvas.width;
+                const cropH = ((normYmax - normYmin) / 1000) * canvas.height;
 
-              if (cropW >= 20 && cropH >= 20) {
-                const destCanvas = document.createElement('canvas');
-                destCanvas.width = Math.round(cropW);
-                destCanvas.height = Math.round(cropH);
-                const destCtx = destCanvas.getContext('2d');
-                if (destCtx) {
-                  destCtx.fillStyle = '#FFFFFF';
-                  destCtx.fillRect(0, 0, destCanvas.width, destCanvas.height);
-                  if (destCtx.imageSmoothingEnabled !== undefined) {
-                    destCtx.imageSmoothingEnabled = true;
-                    destCtx.imageSmoothingQuality = 'high';
-                  }
-                  destCtx.drawImage(
-                    canvas,
-                    Math.round(cropX), Math.round(cropY), Math.round(cropW), Math.round(cropH),
-                    0, 0, Math.round(cropW), Math.round(cropH)
-                  );
-                  destCtx.strokeStyle = '#FF473A';
-                  destCtx.lineWidth = 2;
-                  destCtx.strokeRect(1, 1, destCanvas.width - 2, destCanvas.height - 2);
+                if (cropW >= 20 && cropH >= 20) {
+                  const destCanvas = document.createElement('canvas');
+                  destCanvas.width = Math.round(cropW);
+                  destCanvas.height = Math.round(cropH);
+                  const destCtx = destCanvas.getContext('2d');
+                  if (destCtx) {
+                    destCtx.fillStyle = '#FFFFFF';
+                    destCtx.fillRect(0, 0, destCanvas.width, destCanvas.height);
+                    if (destCtx.imageSmoothingEnabled !== undefined) {
+                      destCtx.imageSmoothingEnabled = true;
+                      destCtx.imageSmoothingQuality = 'high';
+                    }
+                    destCtx.drawImage(
+                      canvas,
+                      Math.round(cropX), Math.round(cropY), Math.round(cropW), Math.round(cropH),
+                      0, 0, Math.round(cropW), Math.round(cropH)
+                    );
+                    destCtx.strokeStyle = 'rgba(255, 71, 58, 0.4)';
+                    destCtx.lineWidth = 1;
+                    destCtx.strokeRect(0.5, 0.5, destCanvas.width - 1, destCanvas.height - 1);
 
-                  const croppedDataUrl = destCanvas.toDataURL('image/png');
-                  if (cleanCode) {
-                    this.aiCroppedCache.set(cleanCode, croppedDataUrl);
-                    this.aiItemMeta.set(cleanCode, item);
-                  }
-                  if (item.position != null) {
-                    this.aiCroppedCacheByPos.set(`${p}_${item.position}`, croppedDataUrl);
+                    const croppedDataUrl = destCanvas.toDataURL('image/png');
+                    if (cleanCode) {
+                      this.aiCroppedCache.set(cleanCode, croppedDataUrl);
+                      this.aiItemMeta.set(cleanCode, item);
+                    }
+                    if (item.position != null) {
+                      this.aiCroppedCacheByPos.set(`${p}_${item.position}`, croppedDataUrl);
+                    }
                   }
                 }
               }
             }
+            this.analyzedPages.add(p);
+            if (typeof this.onPageAiAnalyzed === 'function') {
+              this.onPageAiAnalyzed(p);
+            }
+            return true;
           }
-          this.analyzedPages.add(p);
-          return true;
+        } catch (err) {
+          console.warn(`PdfCropper: analyzePageWithAI failed on page ${p}:`, err);
+        } finally {
+          this.analyzingPromises.delete(p);
         }
-      } catch (err) {
-        console.warn(`PdfCropper: analyzePageWithAI failed on page ${p}:`, err);
-      } finally {
-        this.analyzingPages.delete(p);
-      }
-      return false;
+        return false;
+      })();
+
+      this.analyzingPromises.set(p, promise);
+      return promise;
     }
 
     /**
@@ -336,10 +362,14 @@
         let cropX = 0, cropY = 0, cropW = 0, cropH = 0;
 
         // 3. SMART LOCAL FALLBACK:
+        const pos = parseInt(product.position, 10);
+        const basePos = (pageNum === 2 && pos >= 20) ? 23 : 1;
+        const index = (!isNaN(pos) && pos >= basePos) ? (pos - basePos) : 0;
+        const isPortrait = H > W * 1.1;
+
         // Try text token match with accurate PDF viewport coordinate transformation
         const codeDigits = cleanCode.replace(/\D/g, '');
         const colorNorm = String(product.color || '').trim().toLowerCase();
-        const posStr = String(product.position || '').trim();
         let matchedToken = null;
 
         if (pageData && Array.isArray(pageData.textItems) && pageData.textItems.length > 0) {
@@ -359,18 +389,6 @@
               const item = pageData.textItems[i];
               const str = (item.str || '').trim().toLowerCase();
               if (str && (str === colorNorm || str.includes(colorNorm) || (colorNorm.length > 5 && colorNorm.includes(str)))) {
-                matchedToken = item;
-                break;
-              }
-            }
-          }
-
-          // Tier C: Match position indicator
-          if (!matchedToken && posStr) {
-            for (let i = 0; i < pageData.textItems.length; i++) {
-              const item = pageData.textItems[i];
-              const str = (item.str || '').trim();
-              if (new RegExp(`(?:pos|opt|#)\\s*${posStr}\\b`, 'i').test(str)) {
                 matchedToken = item;
                 break;
               }
@@ -400,33 +418,45 @@
           cropY = ty - (boxHeight * 0.65);
           cropW = boxWidth * 1.25;
           cropH = boxHeight * 1.2;
+        } else if (!isPortrait) {
+          // Precise 5-Column Grid for Landscape Cheatsheet Slides (Page 1, 2, 4)
+          let col = index % 5;
+          let row = Math.floor(index / 5);
+
+          if ((product.cutSize === 'YES' || pos === 0) && (pageNum === 3 || pageNum === 5 || pageNum === 6)) {
+            row = Math.max(3, Math.floor(H / (W * (5.0 / 24.0))) - 1);
+            col = (product.code === '301077491' || product.code === '301073491') ? 1 : 0;
+          }
+
+          col = Math.max(0, Math.min(4, col));
+          row = Math.max(0, row);
+
+          const colWidth = W * 0.1472;
+          const rowHeight = Math.min(H * 0.35, Math.max(H * 0.16, W * (5.0 / 24.0)));
+
+          cropX = (0.254 + col * 0.1472) * W;
+          cropY = row * rowHeight;
+          cropW = colWidth;
+          cropH = rowHeight;
         } else {
-          // Dynamic Grid Distribution (NO hardcoded denim basePos assumptions)
-          const pos = parseInt(product.position, 10);
-          const totalItems = parseInt(product.totalPositions, 10) || 10;
-          const index = (!isNaN(pos) && pos >= 1) ? (pos - 1) : 0;
+          // Precise 4-Column Grid for Portrait Cheatsheet Slides (Page 3, Page 6)
+          let col = index % 4;
+          let row = Math.floor(index / 4);
 
-          let cols = 4;
-          if (totalItems <= 3) cols = 3;
-          else if (totalItems <= 6) cols = 3;
-          else if (totalItems <= 10) cols = 4;
-          else cols = 5;
+          if (product.cutSize === 'YES' || pos === 0) {
+            row = 3;
+            col = (product.code === '301077491' || product.code === '301073491') ? 1 : 0;
+          }
 
-          const col = index % cols;
-          const row = Math.floor(index / cols);
+          col = Math.max(0, Math.min(3, col));
+          row = Math.max(0, row);
 
-          const startX = W * 0.22;
-          const availW = W * 0.74;
-          const startY = H * 0.10;
-          const availH = H * 0.80;
+          const colW = (W * 0.74) / 4;
+          const rowH = H * 0.19;
 
-          const colW = availW / cols;
-          const maxRows = Math.ceil(totalItems / cols) || 3;
-          const rowH = availH / Math.max(2, maxRows);
-
-          cropX = startX + (col * colW) + (colW * 0.04);
-          cropY = startY + (row * rowH) + (rowH * 0.04);
-          cropW = colW * 0.92;
+          cropX = W * 0.23 + (col * colW);
+          cropY = H * 0.11 + (row * rowH);
+          cropW = colW * 0.95;
           cropH = rowH * 0.92;
         }
 
@@ -461,10 +491,10 @@
           0, 0, Math.round(cropW), Math.round(cropH)
         );
 
-        // Add thin subtle laser border on the cropped piece
-        destCtx.strokeStyle = '#FF473A';
-        destCtx.lineWidth = 3;
-        destCtx.strokeRect(1.5, 1.5, destCanvas.width - 3, destCanvas.height - 3);
+        // Subtle clean border
+        destCtx.strokeStyle = 'rgba(255, 71, 58, 0.4)';
+        destCtx.lineWidth = 1;
+        destCtx.strokeRect(0.5, 0.5, destCanvas.width - 1, destCanvas.height - 1);
 
         return destCanvas.toDataURL('image/png');
       } catch (err) {

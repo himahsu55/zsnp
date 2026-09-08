@@ -196,6 +196,16 @@
         updateApiKeyUI();
         if (el.apiKeyModal) el.apiKeyModal.classList.remove('open');
         showToast(key ? 'Gemini API Key saved' : 'Using local zero-latency engine', 'success');
+
+        if (key) {
+          cropper.analyzedPages.clear();
+          cropper.analyzingPromises.clear();
+          const newLinesItems = planogram.getNewLines();
+          const pages = Array.from(new Set(newLinesItems.map(it => parseInt(it.page, 10) || 1)));
+          pages.forEach(p => {
+            cropper.analyzePageWithAI(p, newLinesItems.filter(it => (parseInt(it.page, 10) || 1) === p));
+          });
+        }
       });
     }
 
@@ -687,6 +697,20 @@
         }
       });
 
+      // When Gemini Vision finishes analyzing a page, automatically refresh any visible card thumbnails
+      cropper.onPageAiAnalyzed = (pageNum) => {
+        filtered.forEach(item => {
+          if ((parseInt(item.page, 10) || 1) === pageNum) {
+            const thumbImg = document.getElementById(`thumb-${item.code}`);
+            if (thumbImg) {
+              cropper.cropProductSnippet(item).then(url => {
+                if (url) thumbImg.src = url;
+              }).catch(() => {});
+            }
+          }
+        });
+      };
+
       // Attach button events
       el.newlinesCatalogGrid.querySelectorAll('.btn-locate-floor').forEach(btn => {
         btn.addEventListener('click', async () => {
@@ -730,6 +754,17 @@
 
     // Initialize New Lines counters on boot
     updateNewLinesCounters();
+
+    // Proactively warm up AI Vision crops for New Lines on boot if Gemini is active
+    if (ai.hasApiKey()) {
+      setTimeout(() => {
+        const newLinesItems = planogram.getNewLines();
+        const pages = Array.from(new Set(newLinesItems.map(it => parseInt(it.page, 10) || 1)));
+        pages.forEach(p => {
+          cropper.analyzePageWithAI(p, newLinesItems.filter(it => (parseInt(it.page, 10) || 1) === p));
+        });
+      }, 600);
+    }
 
     // 8. Visual Rack Map Tab Renderer
     function renderFullRackView(sectionName, searchFilter = '') {
