@@ -457,29 +457,29 @@
 
       // AI Diagnostic Explanation (with resilient fallback)
       if (el.aiPlacementText) {
-        el.aiPlacementText.textContent = 'Gemini AI diagnosing scanned barcode...';
-      if (!state.pdf.name || planogram.getTotalCount() === 0) {
-        el.aiPlacementText.innerHTML =
-          `⚠️ <strong>No Planogram Document Loaded:</strong><br>` +
-          `• You scanned barcode <code>${escapeHtml(scannedCode)}</code>, but no store planogram PDF is active.<br>` +
-          `• Tap <strong>Upload PDF / Slide</strong> below to upload your planogram and activate product matching.`;
-      } else if (ai.hasApiKey()) {
-        el.aiPlacementText.textContent = 'Gemini AI diagnosing scanned barcode...';
-        ai.explainNotFound(scannedCode, rawCode, n, state.pdf.name)
-          .then(text => {
-            el.aiPlacementText.innerHTML = formatMarkdown(text);
-          })
-          .catch(err => {
-            console.warn('ai.explainNotFound failed:', err);
-            el.aiPlacementText.innerHTML =
-              `⚠️ <strong>Item Not Found:</strong> Code <code>${escapeHtml(scannedCode)}</code> has no matching slot in this cheatsheet.<br>` +
-              `• Check trimming dial or upload the matching PDF cheatsheet.`;
-          });
-      } else {
-        el.aiPlacementText.innerHTML =
-          `⚠️ <strong>Item Not Found in Cheatsheet:</strong> Code <code>${escapeHtml(scannedCode)}</code> was not matched to any rack position in <em>${escapeHtml(state.pdf.name)}</em>.<br>` +
-          `• Check trimming dial if barcode has trailing size/check digits.<br>` +
-          `• Or verify you uploaded the correct fixture planogram document.`;
+        if (!state.pdf.name || planogram.getTotalCount() === 0) {
+          el.aiPlacementText.innerHTML =
+            `⚠️ <strong>No Planogram Document Loaded:</strong><br>` +
+            `• You scanned barcode <code>${escapeHtml(scannedCode)}</code>, but no store planogram PDF is active.<br>` +
+            `• Tap <strong>Upload PDF / Slide</strong> below to upload your planogram and activate product matching.`;
+        } else if (ai.hasApiKey()) {
+          el.aiPlacementText.textContent = 'Gemini AI diagnosing scanned barcode...';
+          ai.explainNotFound(scannedCode, rawCode, n, state.pdf.name)
+            .then(text => {
+              el.aiPlacementText.innerHTML = formatMarkdown(text);
+            })
+            .catch(err => {
+              console.warn('ai.explainNotFound failed:', err);
+              el.aiPlacementText.innerHTML =
+                `⚠️ <strong>Item Not Found:</strong> Code <code>${escapeHtml(scannedCode)}</code> has no matching slot in this cheatsheet.<br>` +
+                `• Check trimming dial or upload the matching PDF cheatsheet.`;
+            });
+        } else {
+          el.aiPlacementText.innerHTML =
+            `⚠️ <strong>Item Not Found in Cheatsheet:</strong> Code <code>${escapeHtml(scannedCode)}</code> was not matched to any rack position in <em>${escapeHtml(state.pdf.name)}</em>.<br>` +
+            `• Check trimming dial if barcode has trailing size/check digits.<br>` +
+            `• Or verify you uploaded the correct fixture planogram document.`;
+        }
       }
 
       // Diagnostic Snippet Graphic
