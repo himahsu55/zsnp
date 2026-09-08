@@ -55,15 +55,16 @@
         return (
           `### 📍 KAHAN LAGEGA (Where to Place)\n` +
           `• **Fixture & Section**: **${product.section}** (Cheatsheet Page ${product.page})\n` +
-          `• **Target Slot**: **Position #${product.position}** (${product.slotType || (isHanger ? 'Hanging Rail' : 'Shelf Stack')})\n` +
-          `• **Location Advice**: ${meta.kahan_lagega || `Fixture ${product.section}, Slot #${product.position}`}\n\n` +
+          `• **Target Slot**: **Position #${product.position}** (${product.shelf || product.slotType || (isHanger ? 'Hanging Rail' : 'Shelf Stack')})\n` +
+          `• **Location Advice**: ${meta.kahan_lagega || `Fixture ${product.section}, ${product.shelf || `Slot #${product.position}`}`}\n\n` +
           `### 👔 KAISE LAGEGA (How to Display)\n` +
-          `• **Display Style**: ${meta.kaise_lagega || (isHanger ? 'Hanging presentation — hook facing left, garment face-out, buttoned/zipped' : 'Shelf folded stack — size sticker visible on front fold')}\n` +
-          `• **Size Sequence**: Arrange sizes Small to XL from front-to-back (or left-to-right)\n\n` +
+          `• **Display Style**: ${meta.kaise_lagega || (isHanger ? 'Hanging presentation — hook facing left, garment face-out, zipper/button fastened' : 'Shelf folded stack — neat rectangular fold with size sticker visible on front fold')}\n` +
+          `• **Size Sequence**: Arrange sizes Small to XXL from front-to-back (or left-to-right)\n` +
+          (product.remarks ? `• **Layering Rule**: **${product.remarks}**\n` : '') + `\n` +
           `### 💡 AI VM TIPS & RULES (PDF Research)\n` +
           `• **Assortment Status**: ${isNewLine ? '🔥 **FRESH NEW LINE LAUNCH** — High-visibility front-facing placement' : '📦 Core Repeat Line'}\n` +
           `• **Price Signage**: Ensure **₹${product.signage}** talker card is centered at slot\n` +
-          `• **Guidelines & Capacity**: ${meta.tips || product.remarks || (isHanger ? '4–6 Units per face-out rail. Do not overstuff.' : '6–8 Units per shelf stack. Neat alignment.')}`
+          `• **Guidelines & Capacity**: ${meta.tips || product.capacity || (isHanger ? '14 pcs per hanging option. Do not overstuff.' : '15 pcs per shelf stack. Neat alignment.')}`
         );
       }
 
@@ -75,6 +76,7 @@
             `Store worker just scanned garment barcode "${scannedCode}". Planogram details:\n` +
             `- Fixture Section: ${product.section} (Page ${product.page})\n` +
             `- Position: #${product.position} (${product.slotType || 'Hanger/Shelf'})\n` +
+            `- Shelf / Tier: ${product.shelf || 'Standard'}\n` +
             `- Signage Price: ₹${product.signage}\n` +
             `- Color / Style: ${product.color}\n` +
             `- New Line Status: ${product.newLine || 'NO'}\n` +
@@ -84,7 +86,7 @@
             `### 📍 KAHAN LAGEGA (Where to Place)\n` +
             `• Bullet with fixture name, shelf or rail tier, and exact slot position #${product.position}.\n\n` +
             `### 👔 KAISE LAGEGA (How to Display)\n` +
-            `• Bullets explaining hanging vs folding style, hook/collar direction, size order (S to XL), and buttoning/zipping.\n\n` +
+            `• Bullets explaining hanging vs folding style, hook/collar direction, size order (S to XL), buttoning/zipping, and any layering rules.\n\n` +
             `### 💡 AI VM TIPS & RULES (PDF Guidelines)\n` +
             `• Bullets with capacity (max pieces), adjacent color coordination, price signage placement, and what NOT to do (kaise nahi lagana hai).`;
 
@@ -99,18 +101,20 @@
       }
 
       // 3. Local High-Fidelity 3-Section Format
+      const isCut = (product.cutSize === 'YES' || (product.slotType && product.slotType.toLowerCase().includes('cut')));
       return (
         `### 📍 KAHAN LAGEGA (Where to Place)\n` +
         `• **Fixture & Section**: **${product.section}** (Cheatsheet Page ${product.page})\n` +
-        `• **Target Slot**: **Position #${product.position}** (${product.slotType || (isHanger ? 'Hanging Rail' : 'Shelf Stack')})\n` +
+        `• **Target Slot**: **Position #${product.position}** (${product.shelf || product.slotType || (isHanger ? 'Hanging Rail' : 'Shelf Stack')})\n` +
         `• **Price Signage**: **₹${product.signage}** Talker Card\n\n` +
         `### 👔 KAISE LAGEGA (How to Display)\n` +
-        `• **Display Style**: ${isHanger ? 'Hanging presentation — hook facing left, garment face-out, buttoned/zipped' : 'Shelf folded stack — neat rectangular fold with size sticker visible on front fold'}\n` +
-        `• **Size Sequence**: Arrange sizes Small to XL from front-to-back (or left-to-right)\n\n` +
+        `• **Display Style**: ${isCut ? 'Bottom tray / cut pieces presentation — arranged neatly by color set' : (isHanger ? 'Hanging presentation — hook facing left, garment face-out, buttoned/zipped' : 'Shelf folded stack — neat rectangular fold with size sticker visible on front fold')}\n` +
+        `• **Size Sequence**: Arrange sizes Small to XXL from front-to-back (or left-to-right)\n` +
+        (product.remarks ? `• **Display Rule**: **${product.remarks}**\n` : '') + `\n` +
         `### 💡 AI VM TIPS & RULES (Cheatsheet Guidelines)\n` +
         `• **Assortment Status**: ${isNewLine ? '🔥 **FRESH NEW LINE LAUNCH** — Prioritize eye-level / front-facing visibility!' : '📦 Core Repeat Line'}\n` +
-        `• **Rack Capacity**: ${product.capacity || (isHanger ? '4–6 Units per face-out rail' : '6–8 Units per shelf stack')}\n` +
-        `• **Display Rule**: ${product.remarks || 'Maintain clean spacing and verify price talker ₹' + product.signage}`
+        `• **Rack Capacity**: ${product.capacity || (isHanger ? '14 pcs per option on hanging rail' : '15 pcs per shelf stack')}\n` +
+        `• **Rule**: Maintain clean spacing, ensure ₹${product.signage} price talker is centered, do not overstuff.`
       );
     }
 

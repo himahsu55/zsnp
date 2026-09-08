@@ -418,46 +418,33 @@
           cropY = ty - (boxHeight * 0.65);
           cropW = boxWidth * 1.25;
           cropH = boxHeight * 1.2;
-        } else if (!isPortrait) {
-          // Precise 5-Column Grid for Landscape Cheatsheet Slides (Page 1, 2, 4)
-          let col = index % 5;
-          let row = Math.floor(index / 5);
-
-          if ((product.cutSize === 'YES' || pos === 0) && (pageNum === 3 || pageNum === 5 || pageNum === 6)) {
-            row = Math.max(3, Math.floor(H / (W * (5.0 / 24.0))) - 1);
-            col = (product.code === '301077491' || product.code === '301073491') ? 1 : 0;
-          }
-
-          col = Math.max(0, Math.min(4, col));
-          row = Math.max(0, row);
-
-          const colWidth = W * 0.1472;
-          const rowHeight = Math.min(H * 0.35, Math.max(H * 0.16, W * (5.0 / 24.0)));
-
-          cropX = (0.254 + col * 0.1472) * W;
-          cropY = row * rowHeight;
-          cropW = colWidth;
-          cropH = rowHeight;
         } else {
-          // Precise 4-Column Grid for Portrait Cheatsheet Slides (Page 3, Page 6)
-          let col = index % 4;
-          let row = Math.floor(index / 4);
+          // Universal High-Accuracy 5-Column Grid for All Visual Merchandising Cheatsheets
+          const colWidth = W * 0.1472;
+          const rowHeight = (W / 2250.0) * 469.0;
 
-          if (product.cutSize === 'YES' || pos === 0) {
-            row = 3;
-            col = (product.code === '301077491' || product.code === '301073491') ? 1 : 0;
+          if (product.cutSize === 'YES' || (pageNum in { 3: 1, 5: 1, 6: 1 } && pos > 12)) {
+            // Cut pieces section in lower half of Pages 3, 5, 6
+            const cutIndex = (pos >= 13) ? (pos - 13) : 0;
+            const cutCol = Math.max(0, Math.min(4, cutIndex % 5));
+            const cutRow = Math.floor(cutIndex / 5);
+            const origH = (pageNum === 3 ? 2662.0 : (pageNum === 5 ? 1920.0 : 2813.0));
+            const baseY = 1420.0 * (H / origH);
+
+            cropX = (0.254 + cutCol * 0.1472) * W;
+            cropY = baseY + (cutRow * rowHeight);
+            cropW = colWidth;
+            cropH = rowHeight;
+          } else {
+            // Standard Rows (Pos 1-14 for M6, 23-36 for M8, 1-12 for M9, M10, MT2-FRONT, MT2-BACK)
+            const col = Math.max(0, Math.min(4, index % 5));
+            const row = Math.floor(index / 5);
+
+            cropX = (0.254 + col * 0.1472) * W;
+            cropY = row * rowHeight;
+            cropW = colWidth;
+            cropH = rowHeight;
           }
-
-          col = Math.max(0, Math.min(3, col));
-          row = Math.max(0, row);
-
-          const colW = (W * 0.74) / 4;
-          const rowH = H * 0.19;
-
-          cropX = W * 0.23 + (col * colW);
-          cropY = H * 0.11 + (row * rowH);
-          cropW = colW * 0.95;
-          cropH = rowH * 0.92;
         }
 
         // Clamp dimensions safely inside canvas
