@@ -1,4 +1,23 @@
 {
+  "name": "scandock",
+  "version": "2.1.0",
+  "description": "Enterprise-grade PDF Planogram & Barcode Scanner Merchandising Terminal with Voice & Vision Detection",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve ."
+  },
+  "keywords": [
+    "barcode-scanner",
+    "planogram",
+    "retail",
+    "pdf-cropper",
+    "gemini-ai",
+    "voice-recognition",
+    "zxing"
+  ],
+  "author": "himahsu55",
+  "license": "MIT",
   "dependencies": {
     "pdfjs-dist": "^3.11.174"
   }

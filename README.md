@@ -1,65 +1,37 @@
-# Scan Dock — AI PDF Cheatsheet & Barcode Terminal (v2.0)
+# Scan Dock — AI PDF Cheatsheet, Barcode & Voice Terminal (v2.1)
 
-> **Office-Grade Retail Visual Merchandising Terminal**: Scan product barcodes at hardware RFID speeds, trim trailing digits, and instantly locate exact rack/shelf positions from your store's Cheatsheet PDF (M6, M8, M9, M10, MT2).
+> **Enterprise-Grade Retail Visual Merchandising Terminal**: Scan product barcodes at hardware 60 FPS speeds, detect codes via microphone voice recognition, trim trailing digits, and instantly locate exact rack/shelf positions from your store's Cheatsheet PDF (M6, M8, M9, M10, MT2).
 
 ---
 
-## 🌟 What's New in v2.0
+## 🌟 Key Features
 
-1. **Modular Architecture (Multi-File)**:
-   - Split cleanly into `index.html`, `css/styles.css`, and specialized `js/` modules:
-     - [`js/scanner.js`](file:///c:/Users/HIMANSHU/Desktop/spdf/js/scanner.js): Hardware-accelerated BarcodeDetector + ZXing + Handheld laser gun buffer.
-     - [`js/planogram.js`](file:///c:/Users/HIMANSHU/Desktop/spdf/js/planogram.js): PDF.js extractor & visual rack diagram renderer.
-     - [`js/trimmer.js`](file:///c:/Users/HIMANSHU/Desktop/spdf/js/trimmer.js): Synced dial & slider digit truncation.
-     - [`js/ai-service.js`](file:///c:/Users/HIMANSHU/Desktop/spdf/js/ai-service.js): Google Gemini AI API integration.
-     - [`js/app.js`](file:///c:/Users/HIMANSHU/Desktop/spdf/js/app.js): Main terminal orchestrator.
-     - [`sample-data/cheatsheet-data.js`](file:///c:/Users/HIMANSHU/Desktop/spdf/sample-data/cheatsheet-data.js): 6-page store visual merchandising planogram catalog.
+1. **Ultra-Fast Barcode Scanning ("RFID-Speed 60 FPS")**:
+   - **Native Hardware `BarcodeDetector` API**: Sub-10ms frame-level detection in modern Chromium & Android/iOS Safari.
+   - **ZXing MultiFormat Reader Fallback**: Optimized single-pass ROI sampling with zero stutter.
+   - **Physical USB / Bluetooth Laser Scanner Gun Support**: Plug in any wireless or USB barcode scanner gun — automatically captures keystroke bursts without focusing input!
+   - **2X Macro Zoom & Torch**: Instant 1X / 2X toggle for small, dense garment tags and warehouse lighting.
 
-2. **Ultra-Fast Barcode Scanning ("RFID-Speed 60 FPS")**:
-   - **Native Hardware `BarcodeDetector` API**: Sub-15ms frame-level detection in modern Chromium & iOS Safari.
-   - **ZXing MultiFormat Reader Fallback**: Superior accuracy on retail tags over older QuaggaJS.
-   - **Physical USB / Bluetooth Laser Scanner Gun Support**: Plug in any wireless or USB barcode scanner gun — it captures keystroke bursts automatically without needing to click any input!
-   - Camera controls: Torch/flashlight toggle for dim warehouse racks, front/rear camera flip.
+2. **Voice Barcode Detection & Speech Guidance (`js/voice-service.js`)**:
+   - **Voice Barcode Scanner**: Speak product digits (e.g., *"three zero one zero eight one six two six"* or *"301081626"*) to trigger instant planogram lookup hands-free.
+   - **Multilingual Spoken Digit Parsing**: Supports English and Hindi number words (*ek, do, teen, char, paanch...*).
+   - **AI Placement Text-To-Speech (TTS)**: Tap **Speak** in the AI Advisor box to hear clear audio instructions (*"Place in M6 Denim at Position #1, Signage ₹899..."*).
+   - **Voice Rack Search**: Speak color names or section titles to filter items on the active rack display.
 
-3. **Instant Planogram Rack Locator & Visual Rack Diagram**:
-   - When a barcode is scanned (e.g. `301081626`):
-     - 📍 **Section Name**: `M6 DENIM` (Page 1)
-     - 📌 **Exact Position**: `Position #1`
-     - 💰 **Signage Price**: `₹899`
-     - 🎨 **Color**: `WHITE`
-     - 🗺️ **Visual Rack Map**: Lights up the exact slot on the hanger rail or folded shelf in glowing laser-red!
-     - 📋 **Instructions**: `LAYER 1ST PIECE OF OPTION 1 WITH OPTION 3.`
+3. **Complete 102-Product Planogram Catalog & Fresh New Lines**:
+   - Covers all 6 Cheatsheet pages (M6 Denim, M8 Denim Mono, M9 Essentials, M10 Essentials, MT2 Front, MT2 Back).
+   - Accurate tracking of all 16 New Launch lines and 26 cut pieces.
+   - Interactive Visual Rack Map lights up the target position on hanger rails, shacket tiers, or folded shelves.
 
-4. **Google Gemini AI Assistant**:
+4. **Cheatsheet PDF Dock & Pixel-Perfect Cropper**:
+   - 5-column grid mapping for all 6 pages of the store cheatsheet catalog.
+   - Direct canvas extraction with high-resolution visual cropping of physical product cards.
+   - Zoom, fit, and page navigation controls for PDF viewing.
+
+5. **Google Gemini AI Placement Advisor**:
    - Integrated with Google Gemini AI (`gemini-2.5-flash`).
-   - Click the **AI Assistant** button to ask conversational questions about the store display:
-     - *"Where does code 301081626 go?"*
-     - *"Which items belong in M6 Denim?"*
-     - *"What products have price 899?"*
-   - **Zero-Failure Local Engine**: Even **without** an API key, the local smart engine resolves 100% of cheatsheet codes and rack positions with zero latency.
-
----
-
-## 🔑 AI API Key Setup
-
-To enable full conversational reasoning with Google Gemini:
-1. Get a free API key from [Google AI Studio](https://aistudio.google.com/).
-2. In Scan Dock, click **API Key** in the top header.
-3. Paste your key and click **Save**.
-4. Keys are stored locally in your browser's `localStorage` and never sent to any third party.
-
----
-
-## 🚀 Running the Terminal
-
-### Option 1: Browser Direct (Already Running!)
-The local server is running on your machine:
-👉 **[http://localhost:8888](http://localhost:8888)**
-
-### Option 2: Command Line
-```powershell
-python -m http.server 8888
-```
+   - Detailed visual merchandising instructions ("Kahan Lagega • Kaise Lagega").
+   - **Zero-Failure Local Fallback**: 100% of cheatsheet codes and rack positions resolve instantly offline without an API key.
 
 ---
 
@@ -67,17 +39,39 @@ python -m http.server 8888
 
 ```
 scan-dock/
-├── index.html                     # Semantic HTML layout
+├── index.html                     # Semantic HTML5 single-page application
+├── package.json                   # Project metadata, scripts, and dependencies
+├── package-lock.json              # Dependency lockfile
 ├── css/
-│   └── styles.css                 # Industrial design system, visual rack diagrams
+│   └── styles.css                 # Industrial design system, visual rack diagrams & voice animations
 ├── js/
-│   ├── app.js                     # Main orchestrator & table exports
-│   ├── scanner.js                 # BarcodeDetector + ZXing + Handheld gun listener
-│   ├── planogram.js               # PDF.js extractor & rack visualizer
-│   ├── trimmer.js                 # Digit trim rule dial & strikethrough preview
-│   └── ai-service.js              # Google Gemini API integration
+│   ├── app.js                     # Main terminal orchestrator & event bus
+│   ├── voice-service.js           # Speech-to-Text barcode detection & Text-to-Speech narration
+│   ├── scanner.js                 # Dual-engine BarcodeDetector + ZXing + Laser gun listener
+│   ├── planogram.js               # PDF.js catalog extractor & interactive fixture visualizer
+│   ├── pdf-cropper.js             # 5-column PDF page renderer & physical snippet cropper
+│   ├── trimmer.js                 # Synced dial & slider digit truncation
+│   ├── ai-service.js              # Google Gemini AI placement advisor & local smart engine
+│   └── db-sync.js                 # LocalStorage persistence & offline store state
 ├── sample-data/
-│   └── cheatsheet-data.js         # Preloaded 6-page store planogram catalog
-├── build-prompt.md
-└── README.md
+│   ├── cheatsheet-data.js         # Complete 102-item store planogram catalog
+│   ├── racks/                     # High-res fixture diagram graphics (P1-P6)
+│   └── slides/                    # Full-page high-definition cheatsheet slide images
+├── build-prompt.md                # System specification prompt
+└── README.md                      # Terminal documentation
 ```
+
+---
+
+## 🚀 Running the Terminal
+
+### Option 1: Quick Static Serve
+```powershell
+npx serve .
+```
+
+### Option 2: Python Web Server
+```powershell
+python -m http.server 8888
+```
+Then open `http://localhost:8888` in your browser.

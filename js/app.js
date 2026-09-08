@@ -81,6 +81,11 @@
       btnSubmitSim: document.getElementById('btn-submit-sim'),
       manualInput: document.getElementById('manual-barcode-input'),
       manualFormat: document.getElementById('manual-format-select'),
+      btnVoiceScan: document.getElementById('btn-voice-scan'),
+      btnSpeakPlacement: document.getElementById('btn-speak-placement'),
+      ttsBtnLabel: document.getElementById('tts-btn-label'),
+      btnRackVoiceSearch: document.getElementById('btn-rack-voice-search'),
+      btnModalVoiceInput: document.getElementById('btn-modal-voice-input'),
 
       // Result Bottom Sheet Card (AI & Cropped PDF Snippet)
       locationHud: document.getElementById('location-hud'),
@@ -1343,6 +1348,176 @@
           showToast('No clear barcode detected in photo. Ensure tag is flat and well-lit.', 'error');
         }
         e.target.value = '';
+      });
+    }
+
+    // 11B. Voice Barcode Detection & Speech Guidance
+    const voice = window.voiceService;
+
+    // Viewfinder Voice Barcode Scan Button
+    if (el.btnVoiceScan) {
+      el.btnVoiceScan.addEventListener('click', () => {
+        if (!voice || !voice.isSpeechRecognitionSupported()) {
+          showToast('Speech Recognition not supported in this browser. Use Chrome/Edge.', 'error');
+          return;
+        }
+
+        if (voice.isListening()) {
+          voice.stopListening();
+          el.btnVoiceScan.classList.remove('listening');
+          showToast('Voice scanning stopped', 'info');
+          return;
+        }
+
+        el.btnVoiceScan.classList.add('listening');
+        showToast('🎙️ Listening... Speak barcode digits (e.g. "301081626")', 'info');
+
+        voice.startListening({
+          onStart: () => {
+            el.btnVoiceScan.classList.add('listening');
+          },
+          onResult: ({ transcript, code, isFinal }) => {
+            if (code) {
+              voice.stopListening();
+              el.btnVoiceScan.classList.remove('listening');
+              showToast(`Voice detected barcode: ${code}`, 'success');
+              handleScanEvent(code, 'VOICE_DETECTED');
+            } else if (isFinal && transcript) {
+              voice.stopListening();
+              el.btnVoiceScan.classList.remove('listening');
+              const found = planogram.searchProducts(transcript);
+              if (found && found.length > 0) {
+                showToast(`Voice matched item: ${found[0].color} (${found[0].code})`, 'success');
+                handleScanEvent(found[0].code, 'VOICE_SEARCH');
+              } else {
+                showToast(`Spoken: "${transcript}" (No digits detected)`, 'error');
+              }
+            }
+          },
+          onEnd: () => {
+            el.btnVoiceScan.classList.remove('listening');
+          },
+          onError: (err) => {
+            el.btnVoiceScan.classList.remove('listening');
+            if (err === 'not-allowed') {
+              showToast('Microphone access blocked. Please allow mic in browser settings.', 'error');
+            } else if (err !== 'no-speech') {
+              showToast(`Voice error: ${err}`, 'error');
+            }
+          }
+        });
+      });
+    }
+
+    // Modal Voice Barcode Input
+    if (el.btnModalVoiceInput && el.manualInput) {
+      el.btnModalVoiceInput.addEventListener('click', () => {
+        if (!voice || !voice.isSpeechRecognitionSupported()) {
+          showToast('Speech Recognition not supported in this browser.', 'error');
+          return;
+        }
+
+        if (voice.isListening()) {
+          voice.stopListening();
+          el.btnModalVoiceInput.classList.remove('listening');
+          return;
+        }
+
+        el.btnModalVoiceInput.classList.add('listening');
+        showToast('🎙️ Speak barcode digits...', 'info');
+
+        voice.startListening({
+          onResult: ({ transcript, code, isFinal }) => {
+            if (code) {
+              el.manualInput.value = code;
+              voice.stopListening();
+              el.btnModalVoiceInput.classList.remove('listening');
+              showToast(`Spoken Code: ${code}`, 'success');
+            } else if (isFinal && transcript) {
+              el.manualInput.value = transcript;
+              voice.stopListening();
+              el.btnModalVoiceInput.classList.remove('listening');
+            }
+          },
+          onEnd: () => {
+            el.btnModalVoiceInput.classList.remove('listening');
+          },
+          onError: (err) => {
+            el.btnModalVoiceInput.classList.remove('listening');
+            showToast(`Voice error: ${err}`, 'error');
+          }
+        });
+      });
+    }
+
+    // Rack Map Voice Search
+    if (el.btnRackVoiceSearch && el.rackSearchInput) {
+      el.btnRackVoiceSearch.addEventListener('click', () => {
+        if (!voice || !voice.isSpeechRecognitionSupported()) {
+          showToast('Speech Recognition not supported in this browser.', 'error');
+          return;
+        }
+
+        if (voice.isListening()) {
+          voice.stopListening();
+          el.btnRackVoiceSearch.classList.remove('listening');
+          return;
+        }
+
+        el.btnRackVoiceSearch.classList.add('listening');
+        showToast('🎙️ Speak search term (e.g. "White", "301081626")...', 'info');
+
+        voice.startListening({
+          onResult: ({ transcript, code, isFinal }) => {
+            const query = code || transcript;
+            el.rackSearchInput.value = query;
+            el.rackSearchInput.dispatchEvent(new Event('input'));
+            if (isFinal) {
+              voice.stopListening();
+              el.btnRackVoiceSearch.classList.remove('listening');
+            }
+          },
+          onEnd: () => {
+            el.btnRackVoiceSearch.classList.remove('listening');
+          },
+          onError: () => {
+            el.btnRackVoiceSearch.classList.remove('listening');
+          }
+        });
+      });
+    }
+
+    // AI Placement Read Aloud (TTS)
+    if (el.btnSpeakPlacement && el.aiPlacementText) {
+      el.btnSpeakPlacement.addEventListener('click', () => {
+        if (!voice || !voice.isTtsSupported()) {
+          showToast('Speech synthesis not available in this browser.', 'error');
+          return;
+        }
+
+        if (voice.isSpeaking()) {
+          voice.stopSpeaking();
+          el.btnSpeakPlacement.classList.remove('speaking');
+          if (el.ttsBtnLabel) el.ttsBtnLabel.textContent = 'Speak';
+          return;
+        }
+
+        const textToRead = el.aiPlacementText.innerText || el.aiPlacementText.textContent;
+        if (!textToRead) return;
+
+        el.btnSpeakPlacement.classList.add('speaking');
+        if (el.ttsBtnLabel) el.ttsBtnLabel.textContent = 'Stop';
+
+        voice.speak(textToRead, {
+          onEnd: () => {
+            el.btnSpeakPlacement.classList.remove('speaking');
+            if (el.ttsBtnLabel) el.ttsBtnLabel.textContent = 'Speak';
+          },
+          onError: () => {
+            el.btnSpeakPlacement.classList.remove('speaking');
+            if (el.ttsBtnLabel) el.ttsBtnLabel.textContent = 'Speak';
+          }
+        });
       });
     }
 

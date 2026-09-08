@@ -1026,6 +1026,76 @@ body::before {
   letter-spacing: 0.05em;
 }
 
+.btn-tts-speak {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(142, 183, 255, 0.15);
+  border: 1px solid rgba(142, 183, 255, 0.35);
+  color: #C2D9FF;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-tts-speak:hover {
+  background: rgba(142, 183, 255, 0.3);
+  color: #FFF;
+}
+
+.btn-tts-speak.speaking {
+  background: var(--laser);
+  border-color: var(--laser);
+  color: #FFF;
+  animation: pulse-laser-glow 1.2s infinite ease-in-out;
+}
+
+/* Voice Detection Active State */
+.btn-aux-chip.listening {
+  background: var(--laser) !important;
+  border-color: var(--laser) !important;
+  color: #FFF !important;
+  animation: pulse-laser-glow 1s infinite alternate ease-in-out;
+}
+
+@keyframes pulse-laser-glow {
+  0% {
+    box-shadow: 0 0 4px rgba(255, 71, 58, 0.4);
+    transform: scale(1);
+  }
+  100% {
+    box-shadow: 0 0 14px rgba(255, 71, 58, 0.85);
+    transform: scale(1.03);
+  }
+}
+
+.btn-rack-voice {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.btn-rack-voice:hover {
+  color: var(--laser);
+}
+
+.btn-rack-voice.listening {
+  color: #FFF;
+  background: var(--laser);
+  animation: pulse-laser-glow 1s infinite alternate;
+}
+
 .ai-speech-content,
 .ai-box-content {
   font-size: 12px;
